@@ -38,7 +38,7 @@
     { "ns": "tickets",       "name": "split",               "http": "POST",   "path": "/v1/tickets/{id}/split", "write": true },
     { "ns": "tickets",       "name": "bulk",                "http": "POST",   "path": "/v1/tickets/bulk", "write": true },
 
-    { "ns": "macros",        "name": "list",                "http": "GET",    "path": "/v1/macros", "paged": true },
+    { "ns": "macros",        "name": "list",                "http": "GET",    "path": "/v1/macros", "$note": "NOT paged: the handler carries @PaginationExempt and returns a bare array capped at 200, ordered by usage rank. This said `paged: true` for a day, and the .NET and Rust clients both raised a decode error on it while their surface-lock suites stayed green — their fake transports answer every route with a page envelope." },
     { "ns": "macros",        "name": "create",              "http": "POST",   "path": "/v1/macros", "write": true },
     { "ns": "macros",        "name": "update",              "http": "PATCH",  "path": "/v1/macros/{id}", "write": true },
     { "ns": "macros",        "name": "delete",              "http": "DELETE", "path": "/v1/macros/{id}", "write": true },
@@ -65,7 +65,7 @@
     { "ns": "channels",      "name": "get",                 "http": "GET",    "path": "/v1/channels/{id}" },
 
     { "ns": "billing",       "name": "plans",               "http": "GET",    "path": "/v1/billing/plans" },
-    { "ns": "billing",       "name": "usage",               "http": "GET",    "path": "/v1/billing/usage" },
+    { "ns": "billing",       "name": "usage",               "http": "GET",    "path": "/v1/billing/usage", "$requires": "eventType — the handler validates it against a closed list and throws before doing anything else, so a call with no query is a 400. Four SDKs shipped it as an optional argument." },
 
     { "ns": "workspace",     "name": "settings",            "http": "GET",    "path": "/v1/workspace/settings" },
     { "ns": "workspace",     "name": "labels",              "http": "GET",    "path": "/v1/labels" },

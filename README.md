@@ -80,7 +80,7 @@ unrelated endpoint next week.
 
 ```go
 client, err := chatly.New(apiKey,
-	chatly.WithBaseURL("https://chatly.internal.example"), // self-hosted only
+	chatly.WithBaseURL("http://127.0.0.1:3001"), // another environment, or a test server
 	chatly.WithHTTPClient(myHTTPClient),
 	chatly.WithTimeout(30*time.Second),
 	chatly.WithMaxAttempts(5),
@@ -91,7 +91,7 @@ client, err := chatly.New(apiKey,
 
 | Option | Default | Notes |
 | --- | --- | --- |
-| `WithBaseURL` | `https://api.chatlychat.com` | Only for a self-hosted install, or a test server. |
+| `WithBaseURL` | `https://api.chatlychat.com` | Another Chatly environment, or a test server. |
 | `WithHTTPClient` | `&http.Client{}` | Your own client: proxies, connection pools, instrumentation. |
 | `WithRoundTripper` | — | Swap only the transport, keep the rest. |
 | `WithTimeout` | 15s | **Per attempt**, as a context deadline. To bound the whole call including retries, pass your own `context.WithTimeout`. |
@@ -160,11 +160,11 @@ if errors.As(err, &apiErr) {
 unreachable — on a validation failure it carries the per-field
 `details.issues` array.
 
-> **`RequestID` is usually empty.** It reads the `x-request-id` response
-> header, and the Chatly API does not currently set one on any route. A proxy
-> in front of a self-hosted install often does. The field is here because the
-> cross-language SDK contract requires it; do not build a support workflow
-> that assumes it is populated without checking your own edge.
+> **`RequestID` is the id the API gave your request.** It reads the
+> `x-request-id` response header, which the API sets on every response,
+> errors included — quote it in a support request and it finds the exact
+> request in our logs. Send your own `x-request-id` and the API reuses that
+> value instead, so an id your tracing already knows comes back to you.
 
 A `*TransportError` wraps its cause, so `errors.Is(err, context.DeadlineExceeded)`
 works on a timeout.
