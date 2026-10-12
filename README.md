@@ -24,12 +24,12 @@ every contact, every conversation, every ticket in it. Treat it like a
 database password:
 
 - Server-side only. Never ship it to a browser, a mobile app, or a CLI you
-  distribute. The browser widget uses a *public channel id* instead, which you
+  distribute. The browser widget uses a _public channel id_ instead, which you
   can read with `client.Channels.List` (the `publicId` field).
 - Load it from the environment or a secret manager, never from source.
 - It is one of **three** different Chatly secrets, and they are not
   interchangeable: the API key authenticates this SDK, the `whsec_…` webhook
-  secret verifies deliveries *you* receive, and the `sek_…` identity secret
+  secret verifies deliveries _you_ receive, and the `sek_…` identity secret
   signs widget user hashes.
 
 ## Quickstart
@@ -89,16 +89,16 @@ client, err := chatly.New(apiKey,
 )
 ```
 
-| Option | Default | Notes |
-| --- | --- | --- |
-| `WithBaseURL` | `https://api.chatlychat.com` | Another Chatly environment, or a test server. |
-| `WithHTTPClient` | `&http.Client{}` | Your own client: proxies, connection pools, instrumentation. |
-| `WithRoundTripper` | — | Swap only the transport, keep the rest. |
-| `WithTimeout` | 15s | **Per attempt**, as a context deadline. To bound the whole call including retries, pass your own `context.WithTimeout`. |
-| `WithMaxAttempts` | 3 | Total attempts, not retries. 1 disables retrying. |
-| `WithRetryPolicy` | see below | Replaces the whole policy. |
-| `WithUserAgentSuffix` | — | Appended after the SDK's own token. |
-| `WithHeader` | — | Added to every request. Cannot override the headers the SDK owns. |
+| Option                | Default                      | Notes                                                                                                                   |
+| --------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `WithBaseURL`         | `https://api.chatlychat.com` | Another Chatly environment, or a test server.                                                                           |
+| `WithHTTPClient`      | `&http.Client{}`             | Your own client: proxies, connection pools, instrumentation.                                                            |
+| `WithRoundTripper`    | —                            | Swap only the transport, keep the rest.                                                                                 |
+| `WithTimeout`         | 15s                          | **Per attempt**, as a context deadline. To bound the whole call including retries, pass your own `context.WithTimeout`. |
+| `WithMaxAttempts`     | 3                            | Total attempts, not retries. 1 disables retrying.                                                                       |
+| `WithRetryPolicy`     | see below                    | Replaces the whole policy.                                                                                              |
+| `WithUserAgentSuffix` | —                            | Appended after the SDK's own token.                                                                                     |
+| `WithHeader`          | —                            | Added to every request. Cannot override the headers the SDK owns.                                                       |
 
 An empty API key is rejected by `New` rather than at the first call — an
 unset `CHATLY_API_KEY` should fail at process start. A `*Client` is safe for
@@ -130,17 +130,17 @@ Telling `ErrUnauthorized` from `ErrForbidden` is the point of having typed
 errors at all: they are different fixes, and neither should require matching
 on an error message, which is the API's to reword.
 
-| Sentinel | Status | Means |
-| --- | --- | --- |
-| `ErrUnauthorized` | 401 | Credential missing, malformed, expired or revoked. |
-| `ErrForbidden` | 403 | Valid key, missing scope — or a route that needs a signed-in person. |
-| `ErrNotFound` | 404 | No such resource *in this workspace*. |
-| `ErrConflict` | 409 | Resource conflict, or an idempotency key replayed with a different body. |
-| `ErrValidation` | 400 and 422 | The request failed the API's schema. |
-| `ErrRateLimited` | 429 | Throttled. `RetryAfter` is populated when the response carried the header. |
-| `ErrServer` | 5xx | Server-side failure. |
-| `ErrAPI` | any | Matches **every** `*APIError`, whatever the status. |
-| `ErrTransport` | — | Matches every `*TransportError`. No HTTP response existed. |
+| Sentinel          | Status      | Means                                                                      |
+| ----------------- | ----------- | -------------------------------------------------------------------------- |
+| `ErrUnauthorized` | 401         | Credential missing, malformed, expired or revoked.                         |
+| `ErrForbidden`    | 403         | Valid key, missing scope — or a route that needs a signed-in person.       |
+| `ErrNotFound`     | 404         | No such resource _in this workspace_.                                      |
+| `ErrConflict`     | 409         | Resource conflict, or an idempotency key replayed with a different body.   |
+| `ErrValidation`   | 400 and 422 | The request failed the API's schema.                                       |
+| `ErrRateLimited`  | 429         | Throttled. `RetryAfter` is populated when the response carried the header. |
+| `ErrServer`       | 5xx         | Server-side failure.                                                       |
+| `ErrAPI`          | any         | Matches **every** `*APIError`, whatever the status.                        |
+| `ErrTransport`    | —           | Matches every `*TransportError`. No HTTP response existed.                 |
 
 `ErrValidation` covers 400 as well as 422 because that is what this API
 actually answers for a schema failure (code `validation_failed`); 422 is
@@ -183,7 +183,7 @@ a 500 or a dropped connection may or may not have been applied, and replaying
 it under the same key either replays the original response or returns an
 explicit 409, instead of creating a second contact.
 
-To retry *the same logical operation* yourself — across a job restart, say —
+To retry _the same logical operation_ yourself — across a job restart, say —
 pin the key:
 
 ```go
@@ -196,12 +196,12 @@ contact, err := pinned.Contacts.Upsert(ctx, input) // safe to repeat forever
 ```
 
 `WithIdempotencyKey` returns a **derived** client; the original is unchanged.
-Same key + same body replays the first response; same key + a *different* body
+Same key + same body replays the first response; same key + a _different_ body
 is a 409. Do not hold one pinned client for unrelated writes.
 
 For messages specifically, prefer `SendMessageInput.ClientRef`: an
 idempotency key dedupes an HTTP request, while `ClientRef` dedupes the
-*message* for the life of the conversation.
+_message_ for the life of the conversation.
 
 ## Pagination
 
@@ -267,7 +267,7 @@ order is not time order. The cursor is the only correct sequence.
 
 Chatly signs every outbound delivery with `x-livechat-signature:
 t=<unix>,v1=<hex>`, where `v1` is HMAC-SHA256 over the bytes
-`<t>.<raw body>` — the timestamp is signed *into* the digest, which is what
+`<t>.<raw body>` — the timestamp is signed _into_ the digest, which is what
 makes the 5-minute replay window enforceable.
 
 ```go
@@ -302,7 +302,7 @@ func chatlyWebhook(secret string) http.HandlerFunc {
 
 Three things that are easy to get wrong:
 
-1. **Verify the raw bytes.** Read the body, verify, *then* unmarshal.
+1. **Verify the raw bytes.** Read the body, verify, _then_ unmarshal.
    Re-serialising parsed JSON reorders keys and changes whitespace, and the
    digest will not match.
 2. The header is `x-livechat-signature`, not `x-chatly-signature`. Use the
@@ -403,23 +403,23 @@ bare array, `*Page[Object]` is paginated.
 
 ### Credential
 
-| Method | Route |
-| --- | --- |
+| Method          | Route                     |
+| --------------- | ------------------------- |
 | `client.Whoami` | `GET /v1/api-keys/whoami` |
 
 ### `client.Contacts`
 
-| Method | Route |
-| --- | --- |
-| `List` / `ListAll` | `GET /v1/contacts` |
-| `Get` | `GET /v1/contacts/{id}` |
-| `Upsert` | `POST /v1/contacts` |
-| `BulkUpsert` | `POST /v1/contacts/bulk` |
-| `Merge` | `POST /v1/contacts/{id}/merge` |
-| `AddTags` | `POST /v1/contacts/{id}/tags` |
-| `RemoveTag` | `DELETE /v1/contacts/{id}/tags/{tag}` |
-| `Unsubscribe` | `POST /v1/contacts/{id}/unsubscribe` |
-| `Journey` / `JourneyAll` | `GET /v1/contacts/{id}/journey` |
+| Method                   | Route                                 |
+| ------------------------ | ------------------------------------- |
+| `List` / `ListAll`       | `GET /v1/contacts`                    |
+| `Get`                    | `GET /v1/contacts/{id}`               |
+| `Upsert`                 | `POST /v1/contacts`                   |
+| `BulkUpsert`             | `POST /v1/contacts/bulk`              |
+| `Merge`                  | `POST /v1/contacts/{id}/merge`        |
+| `AddTags`                | `POST /v1/contacts/{id}/tags`         |
+| `RemoveTag`              | `DELETE /v1/contacts/{id}/tags/{tag}` |
+| `Unsubscribe`            | `POST /v1/contacts/{id}/unsubscribe`  |
+| `Journey` / `JourneyAll` | `GET /v1/contacts/{id}/journey`       |
 
 `AddTags` adds **one** tag per call — the route's body is `{"tag": "..."}`.
 `Merge` keeps the path id and absorbs the other; it is not reversible.
@@ -428,20 +428,20 @@ read `skipped` and `errors` rather than trusting the status.
 
 ### `client.Conversations`
 
-| Method | Route |
-| --- | --- |
-| `List` / `ListAll` | `GET /v1/conversations` |
-| `Get` | `GET /v1/conversations/{id}` |
-| `Messages` / `MessagesAll` | `GET /v1/conversations/{id}/messages` |
-| `Send` | `POST /v1/conversations/{id}/messages` |
-| `Unattended` | `GET /v1/conversations/unattended` |
-| `AgentHandling` | `GET /v1/conversations/{id}/agent-handling` |
-| `SetAgentHandling` | `PUT /v1/conversations/{id}/agent-handling` |
-| `GeneratedReplies` | `GET /v1/conversations/{id}/generated-replies` |
-| `GenerateReply` | `POST /v1/conversations/{id}/generated-replies` |
-| `ScheduledMessages` | `GET /v1/conversations/{id}/scheduled-messages` |
-| `ScheduleMessage` | `POST /v1/conversations/{id}/scheduled-messages` |
-| `CancelScheduled` | `DELETE /v1/conversations/scheduled-messages/{scheduledId}` |
+| Method                     | Route                                                       |
+| -------------------------- | ----------------------------------------------------------- |
+| `List` / `ListAll`         | `GET /v1/conversations`                                     |
+| `Get`                      | `GET /v1/conversations/{id}`                                |
+| `Messages` / `MessagesAll` | `GET /v1/conversations/{id}/messages`                       |
+| `Send`                     | `POST /v1/conversations/{id}/messages`                      |
+| `Unattended`               | `GET /v1/conversations/unattended`                          |
+| `AgentHandling`            | `GET /v1/conversations/{id}/agent-handling`                 |
+| `SetAgentHandling`         | `PUT /v1/conversations/{id}/agent-handling`                 |
+| `GeneratedReplies`         | `GET /v1/conversations/{id}/generated-replies`              |
+| `GenerateReply`            | `POST /v1/conversations/{id}/generated-replies`             |
+| `ScheduledMessages`        | `GET /v1/conversations/{id}/scheduled-messages`             |
+| `ScheduleMessage`          | `POST /v1/conversations/{id}/scheduled-messages`            |
+| `CancelScheduled`          | `DELETE /v1/conversations/scheduled-messages/{scheduledId}` |
 
 ```go
 _, err := client.Conversations.Send(ctx, conversationID, chatly.SendMessageInput{
@@ -460,15 +460,15 @@ delivered until a person sends it.
 
 ### `client.Tickets`
 
-| Method | Route |
-| --- | --- |
-| `List` / `ListAll` | `GET /v1/tickets` |
-| `Comments` | `GET /v1/tickets/{id}/comments` |
-| `ForConversation` | `GET /v1/tickets/for-conversation/{conversationId}` |
-| `Queues` | `GET /v1/tickets/queues` |
-| `Merge` | `POST /v1/tickets/{id}/merge` |
-| `Split` | `POST /v1/tickets/{id}/split` |
-| `Bulk` | `POST /v1/tickets/bulk` |
+| Method             | Route                                               |
+| ------------------ | --------------------------------------------------- |
+| `List` / `ListAll` | `GET /v1/tickets`                                   |
+| `Comments`         | `GET /v1/tickets/{id}/comments`                     |
+| `ForConversation`  | `GET /v1/tickets/for-conversation/{conversationId}` |
+| `Queues`           | `GET /v1/tickets/queues`                            |
+| `Merge`            | `POST /v1/tickets/{id}/merge`                       |
+| `Split`            | `POST /v1/tickets/{id}/split`                       |
+| `Bulk`             | `POST /v1/tickets/bulk`                             |
 
 ```go
 page, err := client.Tickets.List(ctx, &chatly.ListOptions{
@@ -483,23 +483,28 @@ page, err := client.Tickets.List(ctx, &chatly.ListOptions{
 
 ### `client.Macros`
 
-| Method | Route |
-| --- | --- |
-| `List` | `GET /v1/macros` |
-| `Create` | `POST /v1/macros` |
-| `Update` | `PATCH /v1/macros/{id}` |
+| Method   | Route                    |
+| -------- | ------------------------ |
+| `List`   | `GET /v1/macros`         |
+| `Create` | `POST /v1/macros`        |
+| `Update` | `PATCH /v1/macros/{id}`  |
 | `Delete` | `DELETE /v1/macros/{id}` |
+
+`List` returns a **bare array**, not a page: the route sends no cursor and the
+service caps the result at 200 rows ordered by usage rank. On a workspace with
+more macros than that you get the top 200, so narrow with `Scope`, `Team`,
+`Query` or `Language` rather than expecting the whole library.
 
 `Update` replaces any field it mentions — `Tags` sets the whole list, it does
 not append.
 
 ### `client.KB`
 
-| Method | Route |
-| --- | --- |
-| `Articles` / `ArticlesAll` | `GET /v1/kb/articles` |
-| `Article` | `GET /v1/kb/articles/{slug}` |
-| `Collections` | `GET /v1/kb/collections` |
+| Method                     | Route                        |
+| -------------------------- | ---------------------------- |
+| `Articles` / `ArticlesAll` | `GET /v1/kb/articles`        |
+| `Article`                  | `GET /v1/kb/articles/{slug}` |
+| `Collections`              | `GET /v1/kb/collections`     |
 
 `Article` takes a **slug**, not an id. Filter articles on
 `status:published` before showing them to anyone — the unfiltered list
@@ -507,8 +512,8 @@ includes drafts.
 
 ### `client.Search`
 
-| Method | Route |
-| --- | --- |
+| Method               | Route            |
+| -------------------- | ---------------- |
 | `Query` / `QueryAll` | `GET /v1/search` |
 
 ```go
@@ -532,10 +537,10 @@ so never threshold it across tiers.
 
 ### `client.Events`
 
-| Method | Route |
-| --- | --- |
-| `Track` | `POST /v1/cdp/events` |
-| `List` / `ListAll` | `GET /v1/cdp/events` |
+| Method             | Route                 |
+| ------------------ | --------------------- |
+| `Track`            | `POST /v1/cdp/events` |
+| `List` / `ListAll` | `GET /v1/cdp/events`  |
 
 ```go
 _, err := client.Events.Track(ctx, chatly.TrackEventInput{
@@ -550,23 +555,23 @@ stable: renaming an event orphans every rule built on the old name.
 
 ### `client.Webhooks`
 
-| Method | Route |
-| --- | --- |
-| `Deliveries` / `DeliveriesAll` | `GET /v1/webhooks/deliveries` |
-| `Delivery` | `GET /v1/webhooks/deliveries/{id}` |
-| `Redeliver` | `POST /v1/webhooks/deliveries/{id}/redeliver` |
+| Method                         | Route                                         |
+| ------------------------------ | --------------------------------------------- |
+| `Deliveries` / `DeliveriesAll` | `GET /v1/webhooks/deliveries`                 |
+| `Delivery`                     | `GET /v1/webhooks/deliveries/{id}`            |
+| `Redeliver`                    | `POST /v1/webhooks/deliveries/{id}/redeliver` |
 
 `Redeliver` answers `{queued: true}` — accepted for sending, not delivered.
 Poll `Deliveries` for the outcome.
 
 ### `client.Reports`
 
-| Method | Route |
-| --- | --- |
-| `Overview` | `GET /v1/reports/overview` |
-| `Agents` | `GET /v1/reports/agents` |
+| Method               | Route                                  |
+| -------------------- | -------------------------------------- |
+| `Overview`           | `GET /v1/reports/overview`             |
+| `Agents`             | `GET /v1/reports/agents`               |
 | `ConversationsByDay` | `GET /v1/reports/conversations-by-day` |
-| `SLA` | `GET /v1/reports/sla` |
+| `SLA`                | `GET /v1/reports/sla`                  |
 
 The first three take only `Days` (1–90, clamped server-side). `SLA` takes a
 richer window (`Days`, or `From`+`To` together, plus `GroupBy`). In the SLA
@@ -575,10 +580,10 @@ report, read `coverage.coveragePct` before quoting attainment, and
 
 ### `client.Channels`
 
-| Method | Route |
-| --- | --- |
-| `List` | `GET /v1/channels` |
-| `Get` | `GET /v1/channels/{id}` |
+| Method | Route                   |
+| ------ | ----------------------- |
+| `List` | `GET /v1/channels`      |
+| `Get`  | `GET /v1/channels/{id}` |
 
 This is where the widget's `publicId` comes from. Credential values inside
 `config` read `__redacted__`. `originsRestricted: false` means the widget will
@@ -586,8 +591,8 @@ load on any site.
 
 ### `client.Billing`
 
-| Method | Route |
-| --- | --- |
+| Method  | Route                   |
+| ------- | ----------------------- |
 | `Plans` | `GET /v1/billing/plans` |
 | `Usage` | `GET /v1/billing/usage` |
 
@@ -599,19 +604,19 @@ an error.
 
 ### `client.Workspace`
 
-| Method | Route |
-| --- | --- |
-| `Settings` | `GET /v1/workspace/settings` |
-| `Labels` | `GET /v1/labels` |
-| `Inboxes` | `GET /v1/inboxes` |
+| Method        | Route                        |
+| ------------- | ---------------------------- |
+| `Settings`    | `GET /v1/workspace/settings` |
+| `Labels`      | `GET /v1/labels`             |
+| `Inboxes`     | `GET /v1/inboxes`            |
 | `TeamMembers` | `GET /v1/teams/{id}/members` |
-| `AgentSkills` | `GET /v1/agents/skills` |
+| `AgentSkills` | `GET /v1/agents/skills`      |
 
 `Labels(ctx, &chatly.LabelOptions{WithUsage: true})` changes the response
 shape rather than adding an optional field, and includes unregistered labels
 whose `id` is `""`.
 
-`TeamMembers` is a team roster: `role` is the member's role in *that team*,
+`TeamMembers` is a team roster: `role` is the member's role in _that team_,
 not their workspace role, and the list is not joined against workspace
 memberships, so a member whose seat has been revoked still appears. The
 parent collection `GET /v1/teams` is not key-accessible, so team ids come
@@ -624,7 +629,7 @@ list is the normal state for a workspace that has not configured any.
 ## What is deliberately missing
 
 86 key-accessible routes have no typed method; reach them with `Request`. Beyond that, most of the API — reactions, channel configuration,
-anything that records *who* did something — requires a signed-in person and
+anything that records _who_ did something — requires a signed-in person and
 answers an API key with 403. Those have no method here on purpose: a method
 that always fails is worse than no method, because the failure arrives at
 runtime in someone else's integration.

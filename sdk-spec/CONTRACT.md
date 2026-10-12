@@ -15,7 +15,7 @@ workspace.
 
 Only key-accessible routes are surface. 140 of the API's 886 routes carry
 `@AllowApiKey()`; the rest answer a `ck_` key with 403 because they need a
-signed-in person — a reaction records *who* reacted, and a key is not a
+signed-in person — a reaction records _who_ reacted, and a key is not a
 person. Shipping a method that always fails is worse than not shipping it:
 the failure arrives at runtime, in production, in someone else's
 integration. `surface.json` is the subset we hand-wrote methods for; every
@@ -42,7 +42,7 @@ other key-accessible route is reachable through the escape hatch below.
 - Every write (POST/PATCH/PUT/DELETE) carries an `Idempotency-Key` header.
   Mint a fresh UUID per call by default, so an SDK-level retry cannot
   double-write. Offer a way to **pin** a key across calls, for retrying the
-  *same* logical operation: same key + same body replays the first response,
+  _same_ logical operation: same key + same body replays the first response,
   same key + different body is a 409.
 - Query parameters: `cursor`, `limit`, `filter[]`, `sort`, `fields`. Repeated
   keys stay repeated — `kinds=kb&kinds=ticket` is two parameters, not one
@@ -59,13 +59,13 @@ other key-accessible route is reachable through the escape hatch below.
 
 A typed error, never a bare string. It carries, at minimum:
 
-| Field | From |
-| --- | --- |
-| `status` | HTTP status |
-| `code` | the API's `code` field in the JSON body |
-| `message` | the API's `message` |
-| `request_id` | the `x-request-id` response header |
-| `body` | the raw response text, for anything the above loses |
+| Field        | From                                                |
+| ------------ | --------------------------------------------------- |
+| `status`     | HTTP status                                         |
+| `code`       | the API's `code` field in the JSON body             |
+| `message`    | the API's `message`                                 |
+| `request_id` | the `x-request-id` response header                  |
+| `body`       | the raw response text, for anything the above loses |
 
 Subtype or expose predicates for the cases a caller branches on:
 authentication (401), permission/scope (403), not found (404), conflict and
@@ -75,8 +75,7 @@ wrong" from "my key lacks a scope" without parsing a message string.
 
 **Validation is 400 on this API, not 422.** `ValidationError` in
 `packages/shared/src/errors` is `httpStatus: 400, code: 'validation_failed'`,
-and the exception filter maps a raw `ZodError` the same way; nothing returns
-422. Map both, so a client is correct either way, but do not expect 422.
+and the exception filter maps a raw `ZodError` the same way; nothing returns 422. Map both, so a client is correct either way, but do not expect 422.
 
 **The error body is NESTED: `{"error": {"code", "message"}}`.** `wireError`
 in `packages/shared/src/errors` is the single source of that envelope. A
@@ -188,4 +187,4 @@ list) and by each SDK's own suite (the behaviour). At minimum:
    - header `t=1700000000,v1=c89214b5b5da833daed6f0b8c5bb6bd58cea9022bd80ccc78230f3942d632925`
    - `tolerance` wide enough to admit a 2023 timestamp (pass infinity, or a
      fixed `now` of 1700000000)
-   and rejects the same delivery with the digest taken over the body alone.
+     and rejects the same delivery with the digest taken over the body alone.

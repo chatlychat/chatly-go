@@ -44,8 +44,19 @@ func (o *MacroListOptions) values() url.Values {
 // { id, workspaceId, name, body, actions, shortCode, scope, teamId, userId,
 // language, tags, usageCount, createdByUserId, createdAt, updatedAt }.
 //
-// There is no ListAll for macros: with no cursor on the route there is
-// nothing for a pager to walk.
+// There is no ListAll, because the route is @PaginationExempt and sends no
+// cursor — there is nothing for a pager to walk. What it does instead is
+// TRUNCATE: the service caps the result at 200 rows, ordered by usage rank.
+// So on a workspace with more than 200 macros this is the top 200, not the
+// library, and there is no way to reach the rest through this route. Narrow
+// with Scope, Team, Query or Language rather than expecting completeness.
+//
+// The shared SDK manifest claimed this route was paged for a day. Two
+// sibling SDKs modelled it as {items, nextCursor} and raised a decode error
+// on every real call while their own suites stayed green, because their fake
+// transports answered every route with a page envelope. This package decodes
+// into a slice and rejects an envelope, and its fixture for this route is a
+// bare array — see TestMacrosListIsABareArrayNotAPage.
 func (s *MacrosService) List(ctx context.Context, opts *MacroListOptions) ([]Object, error) {
 	return s.c.getObjects(ctx, "/v1/macros", opts.values())
 }
