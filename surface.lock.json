@@ -1,0 +1,336 @@
+{
+  "sdk": "go",
+  "generatedBy": "surface_test.go",
+  "entries": [
+    {
+      "ns": "billing",
+      "name": "plans",
+      "http": "GET",
+      "path": "/v1/billing/plans"
+    },
+    {
+      "ns": "billing",
+      "name": "usage",
+      "http": "GET",
+      "path": "/v1/billing/usage"
+    },
+    {
+      "ns": "channels",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/channels/{id}"
+    },
+    {
+      "ns": "channels",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/channels"
+    },
+    {
+      "ns": "contacts",
+      "name": "add_tags",
+      "http": "POST",
+      "path": "/v1/contacts/{id}/tags"
+    },
+    {
+      "ns": "contacts",
+      "name": "bulk_upsert",
+      "http": "POST",
+      "path": "/v1/contacts/bulk"
+    },
+    {
+      "ns": "contacts",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/contacts/{id}"
+    },
+    {
+      "ns": "contacts",
+      "name": "journey",
+      "http": "GET",
+      "path": "/v1/contacts/{id}/journey"
+    },
+    {
+      "ns": "contacts",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/contacts"
+    },
+    {
+      "ns": "contacts",
+      "name": "merge",
+      "http": "POST",
+      "path": "/v1/contacts/{id}/merge"
+    },
+    {
+      "ns": "contacts",
+      "name": "remove_tag",
+      "http": "DELETE",
+      "path": "/v1/contacts/{id}/tags/{tag}"
+    },
+    {
+      "ns": "contacts",
+      "name": "unsubscribe",
+      "http": "POST",
+      "path": "/v1/contacts/{id}/unsubscribe"
+    },
+    {
+      "ns": "contacts",
+      "name": "upsert",
+      "http": "POST",
+      "path": "/v1/contacts"
+    },
+    {
+      "ns": "conversations",
+      "name": "agent_handling",
+      "http": "GET",
+      "path": "/v1/conversations/{id}/agent-handling"
+    },
+    {
+      "ns": "conversations",
+      "name": "cancel_scheduled",
+      "http": "DELETE",
+      "path": "/v1/conversations/scheduled-messages/{scheduled_id}"
+    },
+    {
+      "ns": "conversations",
+      "name": "generate_reply",
+      "http": "POST",
+      "path": "/v1/conversations/{id}/generated-replies"
+    },
+    {
+      "ns": "conversations",
+      "name": "generated_replies",
+      "http": "GET",
+      "path": "/v1/conversations/{id}/generated-replies"
+    },
+    {
+      "ns": "conversations",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/conversations/{id}"
+    },
+    {
+      "ns": "conversations",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/conversations"
+    },
+    {
+      "ns": "conversations",
+      "name": "messages",
+      "http": "GET",
+      "path": "/v1/conversations/{id}/messages"
+    },
+    {
+      "ns": "conversations",
+      "name": "schedule_message",
+      "http": "POST",
+      "path": "/v1/conversations/{id}/scheduled-messages"
+    },
+    {
+      "ns": "conversations",
+      "name": "scheduled_messages",
+      "http": "GET",
+      "path": "/v1/conversations/{id}/scheduled-messages"
+    },
+    {
+      "ns": "conversations",
+      "name": "send",
+      "http": "POST",
+      "path": "/v1/conversations/{id}/messages"
+    },
+    {
+      "ns": "conversations",
+      "name": "set_agent_handling",
+      "http": "PUT",
+      "path": "/v1/conversations/{id}/agent-handling"
+    },
+    {
+      "ns": "conversations",
+      "name": "unattended",
+      "http": "GET",
+      "path": "/v1/conversations/unattended"
+    },
+    {
+      "ns": "events",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/cdp/events"
+    },
+    {
+      "ns": "events",
+      "name": "track",
+      "http": "POST",
+      "path": "/v1/cdp/events"
+    },
+    {
+      "ns": "kb",
+      "name": "article",
+      "http": "GET",
+      "path": "/v1/kb/articles/{slug}"
+    },
+    {
+      "ns": "kb",
+      "name": "articles",
+      "http": "GET",
+      "path": "/v1/kb/articles"
+    },
+    {
+      "ns": "kb",
+      "name": "collections",
+      "http": "GET",
+      "path": "/v1/kb/collections"
+    },
+    {
+      "ns": "macros",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/macros"
+    },
+    {
+      "ns": "macros",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/macros/{id}"
+    },
+    {
+      "ns": "macros",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/macros"
+    },
+    {
+      "ns": "macros",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/macros/{id}"
+    },
+    {
+      "ns": "reports",
+      "name": "agents",
+      "http": "GET",
+      "path": "/v1/reports/agents"
+    },
+    {
+      "ns": "reports",
+      "name": "conversations_by_day",
+      "http": "GET",
+      "path": "/v1/reports/conversations-by-day"
+    },
+    {
+      "ns": "reports",
+      "name": "overview",
+      "http": "GET",
+      "path": "/v1/reports/overview"
+    },
+    {
+      "ns": "reports",
+      "name": "sla",
+      "http": "GET",
+      "path": "/v1/reports/sla"
+    },
+    {
+      "ns": "root",
+      "name": "whoami",
+      "http": "GET",
+      "path": "/v1/api-keys/whoami"
+    },
+    {
+      "ns": "search",
+      "name": "query",
+      "http": "GET",
+      "path": "/v1/search"
+    },
+    {
+      "ns": "tickets",
+      "name": "bulk",
+      "http": "POST",
+      "path": "/v1/tickets/bulk"
+    },
+    {
+      "ns": "tickets",
+      "name": "comments",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/comments"
+    },
+    {
+      "ns": "tickets",
+      "name": "for_conversation",
+      "http": "GET",
+      "path": "/v1/tickets/for-conversation/{conversation_id}"
+    },
+    {
+      "ns": "tickets",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/tickets"
+    },
+    {
+      "ns": "tickets",
+      "name": "merge",
+      "http": "POST",
+      "path": "/v1/tickets/{id}/merge"
+    },
+    {
+      "ns": "tickets",
+      "name": "queues",
+      "http": "GET",
+      "path": "/v1/tickets/queues"
+    },
+    {
+      "ns": "tickets",
+      "name": "split",
+      "http": "POST",
+      "path": "/v1/tickets/{id}/split"
+    },
+    {
+      "ns": "webhooks",
+      "name": "deliveries",
+      "http": "GET",
+      "path": "/v1/webhooks/deliveries"
+    },
+    {
+      "ns": "webhooks",
+      "name": "delivery",
+      "http": "GET",
+      "path": "/v1/webhooks/deliveries/{id}"
+    },
+    {
+      "ns": "webhooks",
+      "name": "redeliver",
+      "http": "POST",
+      "path": "/v1/webhooks/deliveries/{id}/redeliver"
+    },
+    {
+      "ns": "workspace",
+      "name": "agent_skills",
+      "http": "GET",
+      "path": "/v1/agents/skills"
+    },
+    {
+      "ns": "workspace",
+      "name": "inboxes",
+      "http": "GET",
+      "path": "/v1/inboxes"
+    },
+    {
+      "ns": "workspace",
+      "name": "labels",
+      "http": "GET",
+      "path": "/v1/labels"
+    },
+    {
+      "ns": "workspace",
+      "name": "settings",
+      "http": "GET",
+      "path": "/v1/workspace/settings"
+    },
+    {
+      "ns": "workspace",
+      "name": "team_members",
+      "http": "GET",
+      "path": "/v1/teams/{id}/members"
+    }
+  ]
+}
