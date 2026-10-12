@@ -18,24 +18,57 @@ func sdkPagers() map[string]func(*Client) *Pager[Object] {
 		"contacts.journey":       func(c *Client) *Pager[Object] { return c.Contacts.JourneyAll("ct_1", nil) },
 		"conversations.list":     func(c *Client) *Pager[Object] { return c.Conversations.ListAll(nil) },
 		"conversations.messages": func(c *Client) *Pager[Object] { return c.Conversations.MessagesAll("cv_1", nil) },
-		"tickets.list":           func(c *Client) *Pager[Object] { return c.Tickets.ListAll(nil) },
-		"kb.articles":            func(c *Client) *Pager[Object] { return c.KB.ArticlesAll(nil) },
-		"events.list":            func(c *Client) *Pager[Object] { return c.Events.ListAll(nil) },
-		"webhooks.deliveries":    func(c *Client) *Pager[Object] { return c.Webhooks.DeliveriesAll(nil) },
-		"search.query":           func(c *Client) *Pager[Object] { return c.Search.QueryAll("q", nil) },
+		"conversations.unattended": func(c *Client) *Pager[Object] {
+			return c.Conversations.UnattendedAll(nil)
+		},
+		"tickets.list":        func(c *Client) *Pager[Object] { return c.Tickets.ListAll(nil) },
+		"kb.articles":         func(c *Client) *Pager[Object] { return c.KB.ArticlesAll(nil) },
+		"events.list":         func(c *Client) *Pager[Object] { return c.Events.ListAll(nil) },
+		"webhooks.deliveries": func(c *Client) *Pager[Object] { return c.Webhooks.DeliveriesAll(nil) },
+		"search.query":        func(c *Client) *Pager[Object] { return c.Search.QueryAll("q", nil) },
 	}
 }
 
-// pagersBeyondTheManifest are routes this SDK walks that the manifest does not
-// flag `paged`. Absolved BY NAME, never by prefix or by count, and each needs
-// a reason that was checked against the handler — an unexplained extra pager
-// is a route being paginated on a guess, which is how a client ends up
-// looping on a cursor the server never sends.
-var pagersBeyondTheManifest = map[string]string{
-	"contacts.journey": "the route answers {items, nextCursor}; its cursor is an ISO-8601 instant " +
-		"rather than an opaque blob, which is why the manifest may not count it, but it does page",
-	"search.query": "the route answers {items, nextCursor} alongside `tier` and `facets`; the single-page " +
-		"method returns the whole object so those two are not thrown away, and QueryAll walks the cursor",
+// pagersBeyondTheManifest absolves a pager the manifest does not flag `paged`.
+//
+// EMPTY, and that is the correct state rather than a dormant feature. It held
+// contacts.journey and search.query while the manifest was missing both; the
+// manifest flags all three of those routes now (conversations.unattended was
+// the third), so both justifications were obsolete the moment it was
+// corrected and have been deleted.
+//
+// The mechanism stays for the next genuine case, with two rules enforced by
+// TestPagerAbsolutionsAreNotStale below: an entry must name a pager that
+// exists, and it must NOT name a route the manifest already flags. A stale
+// exemption is worse than no exemption — it reads as a considered decision
+// while silently excusing something nothing is checking any more, which is
+// how a gate here ends up auditing a shrinking set and still printing green.
+// Absolve by name, never by prefix or by count.
+var pagersBeyondTheManifest = map[string]string{}
+
+// An absolution must still describe something true.
+//
+// This is the check that would have caught today's drift on its own: when the
+// manifest gained `paged` on contacts.journey and search.query, their entries
+// here became claims that the manifest does not flag routes it now flags.
+// Without this, they would have sat there indefinitely, excusing nothing and
+// asserting something false.
+func TestPagerAbsolutionsAreNotStale(t *testing.T) {
+	manifest := loadManifest(t)
+	pagers := sdkPagers()
+
+	for key, reason := range pagersBeyondTheManifest {
+		if reason == "" {
+			t.Errorf("%s is absolved with no reason given", key)
+		}
+		if _, ok := pagers[key]; !ok {
+			t.Errorf("pagersBeyondTheManifest absolves %s, but this SDK has no pager for it; delete the entry", key)
+		}
+		if entry, ok := manifest[key]; ok && entry.Paged {
+			t.Errorf("pagersBeyondTheManifest still absolves %s, but the manifest now flags it `paged` — "+
+				"the justification is obsolete, delete it", key)
+		}
+	}
 }
 
 // Every manifest entry flagged `paged` must have a pager, and every pager
@@ -55,13 +88,19 @@ func TestPagedEntriesHavePagers(t *testing.T) {
 		}
 	}
 
-	// Anti-vacuity floor. It was 8 and is now 7 — NOT because the manifest
-	// stopped parsing, but because macros.list was removed from the paged set
-	// on evidence: its handler is @PaginationExempt and returns a bare array
-	// capped at 200 rows. If this number has to move again, the commit that
-	// moves it should say which route changed and why, so a lowered floor can
-	// never read as a parse failure being papered over.
-	const pagedFloor = 7
+	// Anti-vacuity floor, and a short history so a change to this number is
+	// never mistakable for a parse failure being papered over:
+	//
+	//	8  the manifest's original count
+	//	7  macros.list came OUT — its handler is @PaginationExempt and
+	//	   returns a bare array capped at 200 rows by usage rank
+	//	10 contacts.journey, conversations.unattended and search.query went
+	//	   IN — all three answer {items, nextCursor} and were simply never
+	//	   flagged; found by reading the handlers, not by trusting the file
+	//
+	// Every move was handler evidence in one direction or the other. If this
+	// has to move again, say which route and why, in the commit.
+	const pagedFloor = 10
 	if len(paged) < pagedFloor {
 		t.Fatalf("manifest flags %d paged entries, floor is %d: either a route legitimately became "+
 			"pagination-exempt (say which, and lower the floor deliberately) or the manifest is no "+

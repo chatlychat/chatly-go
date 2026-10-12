@@ -266,3 +266,76 @@ func TestTemplatePath(t *testing.T) {
 		}
 	}
 }
+
+// The lock file must be written exactly as the repo's formatter would write
+// it, or it oscillates forever.
+//
+// The PHP SDK hit this: its emitter used JSON_PRETTY_PRINT, which indents
+// with four spaces, while prettier rewrites the file with two. Every run
+// rewrote what every commit hook reformatted, and a committed artifact
+// churned in both directions indefinitely.
+//
+// Go's json.MarshalIndent(doc, "", "  ") plus one trailing newline matches
+// prettier's JSON output byte for byte with this repo's .prettierrc
+// (tabWidth 2, endOfLine lf) — verified by running the repo's own prettier
+// against the committed file. This test cannot run prettier, so it pins the
+// three properties that differed: indent width, line endings, and exactly one
+// terminating newline.
+func TestSurfaceLockIsFormatterStable(t *testing.T) {
+	raw, err := os.ReadFile(lockFilePath)
+	if err != nil {
+		t.Fatalf("reading %s: %v", lockFilePath, err)
+	}
+
+	if !bytes.HasSuffix(raw, []byte("\n")) {
+		t.Error("the lock file does not end with a newline; prettier would add one")
+	}
+	if bytes.HasSuffix(raw, []byte("\n\n")) {
+		t.Error("the lock file ends with a blank line; prettier would remove it")
+	}
+	if bytes.Contains(raw, []byte("\r")) {
+		t.Error("the lock file contains CR; .prettierrc pins endOfLine to lf")
+	}
+	if bytes.Contains(raw, []byte("\t")) {
+		t.Error("the lock file contains a tab; .prettierrc pins tabWidth to 2 spaces")
+	}
+
+	// Indentation must step in twos. A four-space emitter shows up here as a
+	// level that is not a multiple of two levels deep.
+	for i, line := range bytes.Split(raw, []byte("\n")) {
+		trimmed := bytes.TrimLeft(line, " ")
+		if len(trimmed) == 0 {
+			continue
+		}
+		indent := len(line) - len(trimmed)
+		if indent%2 != 0 {
+			t.Errorf("line %d is indented %d spaces, which is not a multiple of 2", i+1, indent)
+		}
+		if indent > 6 {
+			t.Errorf("line %d is indented %d spaces; this document is at most 3 levels deep, "+
+				"so anything past 6 means a wider indent unit than prettier's", i+1, indent)
+		}
+	}
+}
+
+// fixtureIsPage reports whether a fixture body is a page envelope — an object
+// carrying both `items` and `nextCursor`.
+//
+// Containment rather than byte-equality, because a paged route is allowed to
+// send more than those two keys and several here do. A bare array, an empty
+// object, or an object with only one of the two is NOT a page.
+func fixtureIsPage(t *testing.T, body string) bool {
+	t.Helper()
+	if body == "" {
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(body), &fields); err != nil {
+		// A bare array or a non-object fixture. Not a page, and not an error:
+		// most routes here legitimately answer one.
+		return false
+	}
+	_, hasItems := fields["items"]
+	_, hasCursor := fields["nextCursor"]
+	return hasItems && hasCursor
+}

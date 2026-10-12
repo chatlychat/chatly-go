@@ -73,9 +73,22 @@ idempotency replay mismatch (409), validation, rate limit (429, with
 `retry_after`), and server (5xx). A caller must be able to tell "my key is
 wrong" from "my key lacks a scope" without parsing a message string.
 
-**Validation is 400 on this API, not 422.** `ValidationError` in
-`packages/shared/src/errors` is `httpStatus: 400, code: 'validation_failed'`,
-and the exception filter maps a raw `ZodError` the same way; nothing returns 422. Map both, so a client is correct either way, but do not expect 422.
+**Schema validation is 400 on this API. 422 is a different failure and it
+does happen.** `ValidationError` in `packages/shared/src/errors` is
+`httpStatus: 400, code: 'validation_failed'`, and the exception filter maps a
+raw `ZodError` the same way — so a malformed body is a 400, and a client that
+mapped only 422 put the commonest error in its generic branch. The Java SDK
+shipped exactly that.
+
+But 422 is NOT unused. `macro-action-runner.ts` throws it twice, naming the
+action and its index, when a macro row references an action that has been
+removed from the registry or one fails mid-run — and `POST /v1/macros` and
+`PATCH /v1/macros/{id}` are both key-accessible, so an SDK caller can see it.
+`hired-agents.service.ts` throws it twice more.
+
+Map BOTH to your validation type. This paragraph read "nothing returns 422"
+for half a day, which was wrong; the author of the Java SDK found it by
+reading the handlers rather than believing the contract.
 
 **The error body is NESTED: `{"error": {"code", "message"}}`.** `wireError`
 in `packages/shared/src/errors` is the single source of that envelope. A

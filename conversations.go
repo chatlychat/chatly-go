@@ -293,8 +293,22 @@ func (o *UnattendedOptions) values() url.Values {
 // GET /v1/conversations/unattended — scope conversations:read. The response
 // is {items, nextCursor} plus a `total` that ignores cursor and limit, so it
 // is the whole backlog size rather than this page's.
+//
+// This returns the whole object rather than a Page so that `total` survives.
+// It does paginate: see UnattendedAll to walk the cursor.
 func (s *ConversationsService) Unattended(ctx context.Context, opts *UnattendedOptions) (Object, error) {
 	return s.c.getObject(ctx, "/v1/conversations/unattended", opts.values())
+}
+
+// UnattendedAll walks every page of the unattended backlog.
+//
+// It yields conversations and discards the `total` that sits beside them in
+// each page — use Unattended if you need the backlog size, which is the
+// number a dashboard or an alert threshold actually wants. The two together
+// are the usual shape: read Unattended once for the figure, then walk this
+// when you intend to act on every row.
+func (s *ConversationsService) UnattendedAll(opts *UnattendedOptions) *Pager[Object] {
+	return listPager[Object](s.c, "/v1/conversations/unattended", opts.values())
 }
 
 // AgentHandling reports who or what is currently handling a conversation.

@@ -25,10 +25,17 @@ import (
 // source.
 func TestEveryMethodHitsItsDocumentedRoute(t *testing.T) {
 	const (
-		obj   = `{}`
-		arr   = `[]`
-		page  = `{"items":[],"nextCursor":null}`
-		idObj = `{"id":"x"}`
+		obj  = `{}`
+		arr  = `[]`
+		page = `{"items":[],"nextCursor":null}`
+		// Two paged routes answer a page envelope PLUS fields that a
+		// *Page would discard, so their single-page methods return the
+		// whole object. Their fixtures have to carry those extra keys,
+		// otherwise this table would be feeding them a shape the API never
+		// sends — which is how a fake transport ends up agreeing with a bug.
+		pageWithTotal  = `{"items":[],"nextCursor":null,"total":0}`
+		pageWithFacets = `{"items":[],"nextCursor":null,"tier":"postgres","facets":{}}`
+		idObj          = `{"id":"x"}`
 	)
 
 	cases := []struct {
@@ -99,7 +106,7 @@ func TestEveryMethodHitsItsDocumentedRoute(t *testing.T) {
 			_, err := c.Conversations.Send(ctx, "cv_1", SendMessageInput{Body: "hi"})
 			return err
 		}},
-		{"conversations.unattended", "GET", "/v1/conversations/unattended", obj, func(ctx context.Context, c *Client) error {
+		{"conversations.unattended", "GET", "/v1/conversations/unattended", pageWithTotal, func(ctx context.Context, c *Client) error {
 			_, err := c.Conversations.Unattended(ctx, nil)
 			return err
 		}},
@@ -194,7 +201,7 @@ func TestEveryMethodHitsItsDocumentedRoute(t *testing.T) {
 		}},
 
 		// search
-		{"search.query", "GET", "/v1/search", obj, func(ctx context.Context, c *Client) error {
+		{"search.query", "GET", "/v1/search", pageWithFacets, func(ctx context.Context, c *Client) error {
 			_, err := c.Search.Query(ctx, "refund", nil)
 			return err
 		}},
@@ -341,12 +348,18 @@ func TestEveryMethodHitsItsDocumentedRoute(t *testing.T) {
 			// The fixture this case answered with must be the shape the
 			// route really returns. A page envelope handed to a bare-array
 			// route is the exact way two sibling SDKs stayed green while
-			// failing on every real call.
-			isPageFixture := tc.body == page
+			// failing on every real call — and the reverse, a bare `{}` fed
+			// to a cursored route, hides a missing paginator just as well.
+			//
+			// Containment, not equality: a paged route may answer {items,
+			// nextCursor} plus extra fields (unattended adds `total`, search
+			// adds `tier` and `facets`), and those fixtures are still pages.
+			isPageFixture := fixtureIsPage(t, tc.body)
 			_, justified := pagersBeyondTheManifest[tc.name]
 			switch {
 			case entry.Paged && !isPageFixture:
-				t.Errorf("%s is paged in the manifest but its fixture is not a page envelope", tc.name)
+				t.Errorf("%s is paged in the manifest but its fixture answers no {items,nextCursor}; "+
+					"a cursored route fed a shapeless fixture is how a missing paginator stays green", tc.name)
 			case !entry.Paged && isPageFixture && !justified:
 				t.Errorf("%s is not paged in the manifest but its fixture answers {items,nextCursor}; "+
 					"either the manifest is wrong or this test is agreeing with a bug", tc.name)

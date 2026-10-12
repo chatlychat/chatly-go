@@ -1,6 +1,7 @@
 {
   "$auditedAgainst": "141 routes carry @AllowApiKey() in apps/api, verified 2026-10-12 by decorator-block parse AND by a reader of the controllers. Two entries here were wrong on the first pass: GET /v1/teams has no @AllowApiKey (the decorator belongs to /teams/{id}/members below it) and GET /v1/agents has no handler at all (the agents controller serves only /agents/skills). Both would have 403ed and 404ed in ten SDKs. If you add an entry, prove the route is key-accessible by reading the handler, not by a nearest-decorator grep.",
   "$comment": "SINGLE SOURCE OF TRUTH for every Chatly backend SDK. scripts/check-sdk-surface-parity.mjs reads this file and fails if any SDK is missing an entry. Adding a method means adding it HERE first, then in every SDK. Every path below is key-accessible: it carries @AllowApiKey() in apps/api. A route that does not is not SDK surface, because a `ck_` key gets 403 from it.",
+  "$pagedMeans": "The route answers `{ items, nextCursor }` and every SDK offers an auto-paginating form of it. This read 8 for a day and was wrong in both directions: `macros.list` was flagged and is `@PaginationExempt` (a bare array, 200 rows by usage rank), while `contacts.journey`, `conversations.unattended` and `search.query` return real cursors and were not flagged. Ten now. The author of the Java SDK found the three omissions by reading the handlers rather than trusting this file.",
   "version": 1,
   "baseUrl": "https://api.chatlychat.com",
   "auth": {
@@ -10,11 +11,32 @@
     "credential": "ck_ workspace API key"
   },
   "entries": [
-    { "ns": "root", "name": "whoami", "http": "GET", "path": "/v1/api-keys/whoami" },
-
-    { "ns": "contacts", "name": "list", "http": "GET", "path": "/v1/contacts", "paged": true },
-    { "ns": "contacts", "name": "get", "http": "GET", "path": "/v1/contacts/{id}" },
-    { "ns": "contacts", "name": "upsert", "http": "POST", "path": "/v1/contacts", "write": true },
+    {
+      "ns": "root",
+      "name": "whoami",
+      "http": "GET",
+      "path": "/v1/api-keys/whoami"
+    },
+    {
+      "ns": "contacts",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/contacts",
+      "paged": true
+    },
+    {
+      "ns": "contacts",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/contacts/{id}"
+    },
+    {
+      "ns": "contacts",
+      "name": "upsert",
+      "http": "POST",
+      "path": "/v1/contacts",
+      "write": true
+    },
     {
       "ns": "contacts",
       "name": "bulk_upsert",
@@ -50,8 +72,14 @@
       "path": "/v1/contacts/{id}/unsubscribe",
       "write": true
     },
-    { "ns": "contacts", "name": "journey", "http": "GET", "path": "/v1/contacts/{id}/journey" },
-
+    {
+      "ns": "contacts",
+      "name": "journey",
+      "http": "GET",
+      "path": "/v1/contacts/{id}/journey",
+      "paged": true,
+      "$note": "The cursor is an ISO-8601 instant, not an opaque string — `journeyQuerySchema` declares `cursor: z.string().datetime({ offset: true })`. It is still a cursor: walk it, never construct it."
+    },
     {
       "ns": "conversations",
       "name": "list",
@@ -59,7 +87,12 @@
       "path": "/v1/conversations",
       "paged": true
     },
-    { "ns": "conversations", "name": "get", "http": "GET", "path": "/v1/conversations/{id}" },
+    {
+      "ns": "conversations",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/conversations/{id}"
+    },
     {
       "ns": "conversations",
       "name": "messages",
@@ -78,7 +111,8 @@
       "ns": "conversations",
       "name": "unattended",
       "http": "GET",
-      "path": "/v1/conversations/unattended"
+      "path": "/v1/conversations/unattended",
+      "paged": true
     },
     {
       "ns": "conversations",
@@ -126,16 +160,31 @@
       "path": "/v1/conversations/scheduled-messages/{scheduled_id}",
       "write": true
     },
-
-    { "ns": "tickets", "name": "list", "http": "GET", "path": "/v1/tickets", "paged": true },
-    { "ns": "tickets", "name": "comments", "http": "GET", "path": "/v1/tickets/{id}/comments" },
+    {
+      "ns": "tickets",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/tickets",
+      "paged": true
+    },
+    {
+      "ns": "tickets",
+      "name": "comments",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/comments"
+    },
     {
       "ns": "tickets",
       "name": "for_conversation",
       "http": "GET",
       "path": "/v1/tickets/for-conversation/{conversation_id}"
     },
-    { "ns": "tickets", "name": "queues", "http": "GET", "path": "/v1/tickets/queues" },
+    {
+      "ns": "tickets",
+      "name": "queues",
+      "http": "GET",
+      "path": "/v1/tickets/queues"
+    },
     {
       "ns": "tickets",
       "name": "merge",
@@ -150,8 +199,13 @@
       "path": "/v1/tickets/{id}/split",
       "write": true
     },
-    { "ns": "tickets", "name": "bulk", "http": "POST", "path": "/v1/tickets/bulk", "write": true },
-
+    {
+      "ns": "tickets",
+      "name": "bulk",
+      "http": "POST",
+      "path": "/v1/tickets/bulk",
+      "write": true
+    },
     {
       "ns": "macros",
       "name": "list",
@@ -159,8 +213,20 @@
       "path": "/v1/macros",
       "$note": "NOT paged: the handler carries @PaginationExempt and returns a bare array capped at 200, ordered by usage rank. This said `paged: true` for a day, and the .NET and Rust clients both raised a decode error on it while their surface-lock suites stayed green — their fake transports answer every route with a page envelope."
     },
-    { "ns": "macros", "name": "create", "http": "POST", "path": "/v1/macros", "write": true },
-    { "ns": "macros", "name": "update", "http": "PATCH", "path": "/v1/macros/{id}", "write": true },
+    {
+      "ns": "macros",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/macros",
+      "write": true
+    },
+    {
+      "ns": "macros",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/macros/{id}",
+      "write": true
+    },
     {
       "ns": "macros",
       "name": "delete",
@@ -168,16 +234,47 @@
       "path": "/v1/macros/{id}",
       "write": true
     },
-
-    { "ns": "kb", "name": "articles", "http": "GET", "path": "/v1/kb/articles", "paged": true },
-    { "ns": "kb", "name": "article", "http": "GET", "path": "/v1/kb/articles/{slug}" },
-    { "ns": "kb", "name": "collections", "http": "GET", "path": "/v1/kb/collections" },
-
-    { "ns": "search", "name": "query", "http": "GET", "path": "/v1/search" },
-
-    { "ns": "events", "name": "track", "http": "POST", "path": "/v1/cdp/events", "write": true },
-    { "ns": "events", "name": "list", "http": "GET", "path": "/v1/cdp/events", "paged": true },
-
+    {
+      "ns": "kb",
+      "name": "articles",
+      "http": "GET",
+      "path": "/v1/kb/articles",
+      "paged": true
+    },
+    {
+      "ns": "kb",
+      "name": "article",
+      "http": "GET",
+      "path": "/v1/kb/articles/{slug}"
+    },
+    {
+      "ns": "kb",
+      "name": "collections",
+      "http": "GET",
+      "path": "/v1/kb/collections"
+    },
+    {
+      "ns": "search",
+      "name": "query",
+      "http": "GET",
+      "path": "/v1/search",
+      "paged": true,
+      "$note": "The single-page form returns the whole envelope, not just `items`: the response carries `facets` and a `tier` beside them, and a paginator that yields only hits throws those away."
+    },
+    {
+      "ns": "events",
+      "name": "track",
+      "http": "POST",
+      "path": "/v1/cdp/events",
+      "write": true
+    },
+    {
+      "ns": "events",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/cdp/events",
+      "paged": true
+    },
     {
       "ns": "webhooks",
       "name": "deliveries",
@@ -185,7 +282,12 @@
       "path": "/v1/webhooks/deliveries",
       "paged": true
     },
-    { "ns": "webhooks", "name": "delivery", "http": "GET", "path": "/v1/webhooks/deliveries/{id}" },
+    {
+      "ns": "webhooks",
+      "name": "delivery",
+      "http": "GET",
+      "path": "/v1/webhooks/deliveries/{id}"
+    },
     {
       "ns": "webhooks",
       "name": "redeliver",
@@ -193,21 +295,48 @@
       "path": "/v1/webhooks/deliveries/{id}/redeliver",
       "write": true
     },
-
-    { "ns": "reports", "name": "overview", "http": "GET", "path": "/v1/reports/overview" },
-    { "ns": "reports", "name": "agents", "http": "GET", "path": "/v1/reports/agents" },
+    {
+      "ns": "reports",
+      "name": "overview",
+      "http": "GET",
+      "path": "/v1/reports/overview"
+    },
+    {
+      "ns": "reports",
+      "name": "agents",
+      "http": "GET",
+      "path": "/v1/reports/agents"
+    },
     {
       "ns": "reports",
       "name": "conversations_by_day",
       "http": "GET",
       "path": "/v1/reports/conversations-by-day"
     },
-    { "ns": "reports", "name": "sla", "http": "GET", "path": "/v1/reports/sla" },
-
-    { "ns": "channels", "name": "list", "http": "GET", "path": "/v1/channels" },
-    { "ns": "channels", "name": "get", "http": "GET", "path": "/v1/channels/{id}" },
-
-    { "ns": "billing", "name": "plans", "http": "GET", "path": "/v1/billing/plans" },
+    {
+      "ns": "reports",
+      "name": "sla",
+      "http": "GET",
+      "path": "/v1/reports/sla"
+    },
+    {
+      "ns": "channels",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/channels"
+    },
+    {
+      "ns": "channels",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/channels/{id}"
+    },
+    {
+      "ns": "billing",
+      "name": "plans",
+      "http": "GET",
+      "path": "/v1/billing/plans"
+    },
     {
       "ns": "billing",
       "name": "usage",
@@ -215,12 +344,36 @@
       "path": "/v1/billing/usage",
       "$requires": "eventType — the handler validates it against a closed list and throws before doing anything else, so a call with no query is a 400. Four SDKs shipped it as an optional argument."
     },
-
-    { "ns": "workspace", "name": "settings", "http": "GET", "path": "/v1/workspace/settings" },
-    { "ns": "workspace", "name": "labels", "http": "GET", "path": "/v1/labels" },
-    { "ns": "workspace", "name": "inboxes", "http": "GET", "path": "/v1/inboxes" },
-    { "ns": "workspace", "name": "team_members", "http": "GET", "path": "/v1/teams/{id}/members" },
-    { "ns": "workspace", "name": "agent_skills", "http": "GET", "path": "/v1/agents/skills" }
+    {
+      "ns": "workspace",
+      "name": "settings",
+      "http": "GET",
+      "path": "/v1/workspace/settings"
+    },
+    {
+      "ns": "workspace",
+      "name": "labels",
+      "http": "GET",
+      "path": "/v1/labels"
+    },
+    {
+      "ns": "workspace",
+      "name": "inboxes",
+      "http": "GET",
+      "path": "/v1/inboxes"
+    },
+    {
+      "ns": "workspace",
+      "name": "team_members",
+      "http": "GET",
+      "path": "/v1/teams/{id}/members"
+    },
+    {
+      "ns": "workspace",
+      "name": "agent_skills",
+      "http": "GET",
+      "path": "/v1/agents/skills"
+    }
   ],
   "helpers": [
     {
