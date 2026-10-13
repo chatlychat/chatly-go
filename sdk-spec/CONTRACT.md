@@ -107,7 +107,66 @@ honour `Retry-After` when present. A retried write reuses the same
 `Idempotency-Key` as the attempt that failed — that is the whole reason the
 header exists.
 
-## 5. Pagination
+## 5. Pagination — and the shape of the answer
+
+### 5a. Four shapes, and the manifest says which
+
+`surface.json` carries a `shape` on every entry: the TOP-LEVEL shape of a
+successful body, read off the handler's `@ZodResponse` schema (or, where it
+has none, the service return type it forwards). There are four, and every
+route is exactly one of them:
+
+| `shape`  | What comes back                                 | Count |
+| -------- | ----------------------------------------------- | ----: |
+| `array`  | a bare JSON array                               |    14 |
+| `page`   | the cursor envelope — `items` plus `nextCursor` |    10 |
+| `object` | a JSON object that is not a page                |    30 |
+| `empty`  | no body at all, a real 204                      |     1 |
+
+A `page` may carry fields beside the two that define it, and five do.
+`hasMore` on the four that go through `buildPaginatedResponse` —
+`tickets.list`, `kb.articles`, `events.list`, `webhooks.deliveries`. `total`
+on `conversations.unattended` (the badge number, which ignores the cursor).
+`tier` plus `facets` on `search.query`. The remaining five are built by the
+`pageOf` helpers local to the contacts and conversations modules and carry
+nothing else at all — so `hasMore` is on four of ten, not on most of them,
+and a client that reads it as a required field is wrong about six routes. A
+decoder must tolerate the extras rather
+than reject the body; `search.query`'s single-page form in particular must
+return the WHOLE envelope, because a client that yields only hits throws the
+facets away.
+
+**Derive the shape from the schema, never from the route's name.** Three
+routes read like one thing and answer another:
+
+- `contacts.remove_tag` — `DELETE /v1/contacts/{id}/tags/{tag}` — answers
+  **200 with the surviving contact**, the same object the tag POST returns.
+- `conversations.cancel_scheduled` — a DELETE — answers **200 with the row it
+  just cancelled**, so a caller can show what it called off.
+- `macros.delete` is the **only** real 204 on the surface.
+
+And two of the four `reports.*` routes are bare arrays (`reports.agents`,
+`reports.conversations_by_day`) while the other two are objects.
+
+The ten `page` routes are exactly the ten carrying `paged: true`.
+`scripts/check-sdk-surface-parity.mjs` asserts that correspondence in both
+directions, so the two fields cannot drift apart: `shape` says what comes
+back, `paged` says the SDK also offers a walker over it.
+
+**Every SDK declares its own expected shape per route, by hand, and writes it
+into `surface.lock.json`.** It is deliberately NOT read from the manifest.
+A fake transport fed from the manifest agrees with whatever the manifest says,
+including when it is wrong — which is not hypothetical: `macros.list` was
+flagged `paged` for a day and is `@PaginationExempt`, answering a bare
+200-row array, and the .NET and Rust clients both raised a decode error on it
+in production while their suites were green. The Rust one was worse than a
+throw: its derived `Page` deserializer read the bare array as an _empty page_
+and returned it with a 200, which is a wrong answer rather than a missing
+error. So the gate diffs eight independently written columns against the
+manifest, and a wrong manifest row needs eight authors to misread the same
+handler.
+
+### 5b. Pagination
 
 List endpoints return `{ items, nextCursor }`, where `nextCursor` is null on
 the last page. Every SDK offers both:
@@ -201,3 +260,15 @@ list) and by each SDK's own suite (the behaviour). At minimum:
    - `tolerance` wide enough to admit a 2023 timestamp (pass infinity, or a
      fixed `now` of 1700000000)
      and rejects the same delivery with the digest taken over the body alone.
+10. The surface lock covers **response shapes**, in both directions. The
+    suite declares, by hand and not from the manifest, the shape it expects
+    from each of the 55 routes (§5a); feeds each method a body of THAT shape;
+    asserts the value handed back really has it — which is what catches a
+    method that wraps or unwraps; asserts the distribution is still
+    14 `array` / 10 `page` / 30 `object` / 1 `empty`, so a column of 55
+    `object`s cannot pass; and feeds every auto-paginator a bare array where
+    it expects a page and requires it to **fail loudly**. The last one is the
+    only part that proves the declaration matters: a decoder that ignores the
+    body passes everything else. The declared column goes into
+    `surface.lock.json` and the parity gate diffs all eight against the
+    manifest.

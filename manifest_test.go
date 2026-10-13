@@ -2,13 +2,17 @@ package chatly
 
 // The machinery between the surface table and the committed artifact: reading
 // the shared manifest, templating an observed request path back against it,
-// and emitting surface.lock.json. Split out of surface_test.go, which is now
-// the 55-method table and nothing else.
+// and emitting surface.lock.json, plus the two halves of the response-shape
+// check: the fixture a declared shape becomes on the wire (responseForShape)
+// and the reader that names the shape a decoded value really has
+// (actualShape). Split out of surface_test.go, which is the 55-route table
+// and the declarations on it.
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -48,18 +52,108 @@ type manifestEntry struct {
 	// a day while the route actually returns a bare array capped at 200, and
 	// two sibling SDKs raised a decode error on every real call while their
 	// own suites stayed green — because a fake transport that answers every
-	// route with a page envelope agrees with the mistake. Hence
-	// TestFixtureShapesMatchTheManifest and TestPagedEntriesHavePagers below.
+	// route with a page envelope agrees with the mistake. Hence the
+	// cross-check in TestEveryMethodHitsItsDocumentedRoute against this
+	// SDK's own `shape` column, and TestPagedEntriesHavePagers.
 	Paged bool `json:"paged"`
+
+	// Shape is the manifest's claim about the TOP-LEVEL shape of the
+	// successful response: array, page, object or empty. It is read here
+	// only to be DIFFED against this SDK's own hand-written declaration (the
+	// `shape` column in surfaceCases) — never to build a fixture from. See
+	// the comment on surfaceCases for why that direction matters.
+	Shape shape `json:"shape"`
 }
 
 // lockEntry is one row of surface.lock.json. Field order here IS the key
 // order in the emitted JSON.
 type lockEntry struct {
-	NS   string `json:"ns"`
-	Name string `json:"name"`
-	HTTP string `json:"http"`
-	Path string `json:"path"`
+	NS    string `json:"ns"`
+	Name  string `json:"name"`
+	HTTP  string `json:"http"`
+	Path  string `json:"path"`
+	Shape shape  `json:"shape"`
+}
+
+// responseForShape is the success body a route of the given shape really
+// sends, as the fake transport should answer it.
+//
+// One body per shape, chosen by the route's OWN declaration — the single
+// most important property of this suite. A fake that answers every route
+// with `{items, nextCursor}` agrees with a manifest that wrongly flags a
+// bare-array route as paged, which is exactly how two sibling SDKs shipped a
+// paginator over macros.list with green suites.
+func responseForShape(t *testing.T, s shape) (status int, body string) {
+	t.Helper()
+	switch s {
+	case shapePage:
+		return http.StatusOK, `{"items":[{"id":"x_1"}],"nextCursor":null}`
+	case shapeArray:
+		return http.StatusOK, `[{"id":"x_1"}]`
+	case shapeObject:
+		return http.StatusOK, `{"id":"x_1"}`
+	case shapeEmpty:
+		// A real 204 has NO body. A decoder that insists on parsing one
+		// fails against this, which is the only reason `empty` exists as a
+		// value separate from an empty object.
+		return http.StatusNoContent, ""
+	}
+	t.Fatalf("no fixture for shape %q: it is not one of the four", s)
+	return 0, ""
+}
+
+// actualShape names the shape a decoded value really has, in the same
+// four-word vocabulary the declaration uses.
+//
+// Go's methods return concrete types rather than `any`, so most of this is a
+// type switch — but the type alone is not the answer. Two `page` routes
+// return an Object because their envelopes carry extra fields, so a map is
+// inspected for `items` and `nextCursor`; and a nil map, nil slice or empty
+// `Items` means nothing was decoded, which is reported rather than passed off
+// as the declared shape.
+func actualShape(value any) string {
+	if value == nil {
+		return string(shapeEmpty)
+	}
+	switch v := value.(type) {
+	case *Page[Object]:
+		if v == nil {
+			return "nil *Page"
+		}
+		if len(v.Items) == 0 {
+			// The envelope decoded into nothing. This is the Rust client's
+			// bug: a bare array read as an empty page and returned with a
+			// 200 — a wrong answer rather than a missing one.
+			return "page(no items decoded)"
+		}
+		return string(shapePage)
+	case []Object:
+		if v == nil {
+			return string(shapeEmpty)
+		}
+		return string(shapeArray)
+	case Object:
+		if v == nil {
+			return string(shapeEmpty)
+		}
+		items, hasItems := v["items"].([]any)
+		if _, hasCursor := v["nextCursor"]; hasItems && hasCursor {
+			if len(items) == 0 {
+				return "page(no items decoded)"
+			}
+			return string(shapePage)
+		}
+		return string(shapeObject)
+	case *WhoAmI:
+		if v == nil {
+			return "nil *WhoAmI"
+		}
+		// A struct decode cannot be told apart from a zero one here, so this
+		// route's object-ness rests on its type. It is the only struct
+		// return on the surface.
+		return string(shapeObject)
+	}
+	return fmt.Sprintf("unhandled(%T)", value)
 }
 
 func loadManifest(t *testing.T) map[string]manifestEntry {
@@ -147,6 +241,19 @@ func assertCoversManifest(t *testing.T, recorded []lockEntry, manifest map[strin
 		if got.HTTP != want.HTTP || got.Path != want.Path {
 			t.Errorf("%s: SDK calls %s %s, manifest says %s %s", key, got.HTTP, got.Path, want.HTTP, want.Path)
 		}
+		// The shape diff, reported here so a disagreement fails locally
+		// instead of only in the cross-language gate. Both sides were
+		// written by reading the handler; a mismatch means one of the two
+		// readings is wrong, and the handler settles it — never this file.
+		switch {
+		case want.Shape == "":
+			t.Errorf("%s: the manifest entry carries no `shape`; it is required, and a lock "+
+				"written against a manifest without one would be unverifiable", key)
+		case got.Shape != want.Shape:
+			t.Errorf("%s: this SDK declares the response shape %s, the manifest says %s — "+
+				"read the handler's @ZodResponse and fix whichever is wrong",
+				key, got.Shape, want.Shape)
+		}
 	}
 	for key := range byKey {
 		if _, ok := manifest[key]; !ok {
@@ -158,6 +265,10 @@ func assertCoversManifest(t *testing.T, recorded []lockEntry, manifest map[strin
 // writeSurfaceLock emits surface.lock.json, sorted by ns then name.
 //
 // ─── Why a lock file, and why it is written here ──────────────────────────
+//
+// Each row records the verb and path OBSERVED on the wire plus the response
+// shape this SDK's own table declares for that route, in the key order the
+// gate reads: ns, name, http, path, shape.
 //
 // The cross-language parity gate used to match route strings in SDK SOURCE
 // TEXT. That counts a path in a comment, and it did: a boxed doc comment in
@@ -338,4 +449,76 @@ func fixtureIsPage(t *testing.T, body string) bool {
 	_, hasItems := fields["items"]
 	_, hasCursor := fields["nextCursor"]
 	return hasItems && hasCursor
+}
+
+// The fixtures everything else trusts, checked against the vocabulary they
+// are named in.
+//
+// responseForShape is the single point where a declared shape becomes bytes
+// on a wire, so if it answered a page envelope for `array` the whole suite
+// would quietly go back to agreeing with itself. Four bodies, four
+// assertions, plus the 204 that must carry no body at all.
+func TestFixturesHaveTheShapeTheyAreNamedFor(t *testing.T) {
+	status, body := responseForShape(t, shapePage)
+	if status != http.StatusOK || !fixtureIsPage(t, body) {
+		t.Errorf("the `page` fixture is %d %q, which is not {items,nextCursor}", status, body)
+	}
+
+	status, body = responseForShape(t, shapeArray)
+	var arr []json.RawMessage
+	if err := json.Unmarshal([]byte(body), &arr); err != nil || len(arr) != 1 || status != http.StatusOK {
+		t.Errorf("the `array` fixture is %d %q, which is not a one-element bare array", status, body)
+	}
+	if fixtureIsPage(t, body) {
+		t.Error("the `array` fixture parses as a page envelope")
+	}
+
+	status, body = responseForShape(t, shapeObject)
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(body), &obj); err != nil || len(obj) == 0 || status != http.StatusOK {
+		t.Errorf("the `object` fixture is %d %q, which is not a non-empty JSON object", status, body)
+	}
+	if fixtureIsPage(t, body) {
+		t.Error("the `object` fixture parses as a page envelope; it would hide a page/object mix-up")
+	}
+
+	if status, body = responseForShape(t, shapeEmpty); status != http.StatusNoContent || body != "" {
+		t.Errorf("the `empty` fixture is %d %q; it must be a bodyless 204, or a decoder that "+
+			"insists on parsing a body would never be caught", status, body)
+	}
+}
+
+// actualShape is the other half of that pair: the reader. If it called
+// everything an object, every per-route assertion would pass.
+func TestActualShapeNamesWhatItIsGiven(t *testing.T) {
+	cursor := "c_2"
+	cases := []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{"nil", nil, "empty"},
+		{"page pointer", &Page[Object]{Items: []Object{{"id": "x_1"}}}, "page"},
+		{"page pointer with a cursor", &Page[Object]{Items: []Object{{"id": "x_1"}}, NextCursor: &cursor}, "page"},
+		{"slice", []Object{{"id": "x_1"}}, "array"},
+		{"empty slice", []Object{}, "array"},
+		{"object", Object{"id": "x_1"}, "object"},
+		// The two routes whose envelope carries extra fields and whose
+		// method therefore returns the whole object. Still a page.
+		{"object carrying a page", Object{"items": []any{Object{"id": "x_1"}}, "nextCursor": nil, "total": 3}, "page"},
+		{"whoami", &WhoAmI{WorkspaceID: "ws_1"}, "object"},
+		// Nothing decoded. These must NOT read as the shape that was asked
+		// for — that is the whole failure being guarded against.
+		{"nil map", Object(nil), "empty"},
+		{"nil slice", []Object(nil), "empty"},
+		{"page that decoded nothing", &Page[Object]{}, "page(no items decoded)"},
+		{"object with an empty items array", Object{"items": []any{}, "nextCursor": nil}, "page(no items decoded)"},
+		{"half an envelope", Object{"items": []any{Object{"id": "x_1"}}}, "object"},
+		{"a type this suite does not model", 42, "unhandled(int)"},
+	}
+	for _, tc := range cases {
+		if got := actualShape(tc.value); got != tc.want {
+			t.Errorf("%s: actualShape = %q, want %q", tc.name, got, tc.want)
+		}
+	}
 }

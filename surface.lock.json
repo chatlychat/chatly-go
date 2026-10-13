@@ -6,331 +6,386 @@
       "ns": "billing",
       "name": "plans",
       "http": "GET",
-      "path": "/v1/billing/plans"
+      "path": "/v1/billing/plans",
+      "shape": "array"
     },
     {
       "ns": "billing",
       "name": "usage",
       "http": "GET",
-      "path": "/v1/billing/usage"
+      "path": "/v1/billing/usage",
+      "shape": "object"
     },
     {
       "ns": "channels",
       "name": "get",
       "http": "GET",
-      "path": "/v1/channels/{id}"
+      "path": "/v1/channels/{id}",
+      "shape": "object"
     },
     {
       "ns": "channels",
       "name": "list",
       "http": "GET",
-      "path": "/v1/channels"
+      "path": "/v1/channels",
+      "shape": "array"
     },
     {
       "ns": "contacts",
       "name": "add_tags",
       "http": "POST",
-      "path": "/v1/contacts/{id}/tags"
+      "path": "/v1/contacts/{id}/tags",
+      "shape": "object"
     },
     {
       "ns": "contacts",
       "name": "bulk_upsert",
       "http": "POST",
-      "path": "/v1/contacts/bulk"
+      "path": "/v1/contacts/bulk",
+      "shape": "object"
     },
     {
       "ns": "contacts",
       "name": "get",
       "http": "GET",
-      "path": "/v1/contacts/{id}"
+      "path": "/v1/contacts/{id}",
+      "shape": "object"
     },
     {
       "ns": "contacts",
       "name": "journey",
       "http": "GET",
-      "path": "/v1/contacts/{id}/journey"
+      "path": "/v1/contacts/{id}/journey",
+      "shape": "page"
     },
     {
       "ns": "contacts",
       "name": "list",
       "http": "GET",
-      "path": "/v1/contacts"
+      "path": "/v1/contacts",
+      "shape": "page"
     },
     {
       "ns": "contacts",
       "name": "merge",
       "http": "POST",
-      "path": "/v1/contacts/{id}/merge"
+      "path": "/v1/contacts/{id}/merge",
+      "shape": "object"
     },
     {
       "ns": "contacts",
       "name": "remove_tag",
       "http": "DELETE",
-      "path": "/v1/contacts/{id}/tags/{tag}"
+      "path": "/v1/contacts/{id}/tags/{tag}",
+      "shape": "object"
     },
     {
       "ns": "contacts",
       "name": "unsubscribe",
       "http": "POST",
-      "path": "/v1/contacts/{id}/unsubscribe"
+      "path": "/v1/contacts/{id}/unsubscribe",
+      "shape": "object"
     },
     {
       "ns": "contacts",
       "name": "upsert",
       "http": "POST",
-      "path": "/v1/contacts"
+      "path": "/v1/contacts",
+      "shape": "object"
     },
     {
       "ns": "conversations",
       "name": "agent_handling",
       "http": "GET",
-      "path": "/v1/conversations/{id}/agent-handling"
+      "path": "/v1/conversations/{id}/agent-handling",
+      "shape": "object"
     },
     {
       "ns": "conversations",
       "name": "cancel_scheduled",
       "http": "DELETE",
-      "path": "/v1/conversations/scheduled-messages/{scheduled_id}"
+      "path": "/v1/conversations/scheduled-messages/{scheduled_id}",
+      "shape": "object"
     },
     {
       "ns": "conversations",
       "name": "generate_reply",
       "http": "POST",
-      "path": "/v1/conversations/{id}/generated-replies"
+      "path": "/v1/conversations/{id}/generated-replies",
+      "shape": "object"
     },
     {
       "ns": "conversations",
       "name": "generated_replies",
       "http": "GET",
-      "path": "/v1/conversations/{id}/generated-replies"
+      "path": "/v1/conversations/{id}/generated-replies",
+      "shape": "array"
     },
     {
       "ns": "conversations",
       "name": "get",
       "http": "GET",
-      "path": "/v1/conversations/{id}"
+      "path": "/v1/conversations/{id}",
+      "shape": "object"
     },
     {
       "ns": "conversations",
       "name": "list",
       "http": "GET",
-      "path": "/v1/conversations"
+      "path": "/v1/conversations",
+      "shape": "page"
     },
     {
       "ns": "conversations",
       "name": "messages",
       "http": "GET",
-      "path": "/v1/conversations/{id}/messages"
+      "path": "/v1/conversations/{id}/messages",
+      "shape": "page"
     },
     {
       "ns": "conversations",
       "name": "schedule_message",
       "http": "POST",
-      "path": "/v1/conversations/{id}/scheduled-messages"
+      "path": "/v1/conversations/{id}/scheduled-messages",
+      "shape": "object"
     },
     {
       "ns": "conversations",
       "name": "scheduled_messages",
       "http": "GET",
-      "path": "/v1/conversations/{id}/scheduled-messages"
+      "path": "/v1/conversations/{id}/scheduled-messages",
+      "shape": "array"
     },
     {
       "ns": "conversations",
       "name": "send",
       "http": "POST",
-      "path": "/v1/conversations/{id}/messages"
+      "path": "/v1/conversations/{id}/messages",
+      "shape": "object"
     },
     {
       "ns": "conversations",
       "name": "set_agent_handling",
       "http": "PUT",
-      "path": "/v1/conversations/{id}/agent-handling"
+      "path": "/v1/conversations/{id}/agent-handling",
+      "shape": "object"
     },
     {
       "ns": "conversations",
       "name": "unattended",
       "http": "GET",
-      "path": "/v1/conversations/unattended"
+      "path": "/v1/conversations/unattended",
+      "shape": "page"
     },
     {
       "ns": "events",
       "name": "list",
       "http": "GET",
-      "path": "/v1/cdp/events"
+      "path": "/v1/cdp/events",
+      "shape": "page"
     },
     {
       "ns": "events",
       "name": "track",
       "http": "POST",
-      "path": "/v1/cdp/events"
+      "path": "/v1/cdp/events",
+      "shape": "object"
     },
     {
       "ns": "kb",
       "name": "article",
       "http": "GET",
-      "path": "/v1/kb/articles/{slug}"
+      "path": "/v1/kb/articles/{slug}",
+      "shape": "object"
     },
     {
       "ns": "kb",
       "name": "articles",
       "http": "GET",
-      "path": "/v1/kb/articles"
+      "path": "/v1/kb/articles",
+      "shape": "page"
     },
     {
       "ns": "kb",
       "name": "collections",
       "http": "GET",
-      "path": "/v1/kb/collections"
+      "path": "/v1/kb/collections",
+      "shape": "array"
     },
     {
       "ns": "macros",
       "name": "create",
       "http": "POST",
-      "path": "/v1/macros"
+      "path": "/v1/macros",
+      "shape": "object"
     },
     {
       "ns": "macros",
       "name": "delete",
       "http": "DELETE",
-      "path": "/v1/macros/{id}"
+      "path": "/v1/macros/{id}",
+      "shape": "empty"
     },
     {
       "ns": "macros",
       "name": "list",
       "http": "GET",
-      "path": "/v1/macros"
+      "path": "/v1/macros",
+      "shape": "array"
     },
     {
       "ns": "macros",
       "name": "update",
       "http": "PATCH",
-      "path": "/v1/macros/{id}"
+      "path": "/v1/macros/{id}",
+      "shape": "object"
     },
     {
       "ns": "reports",
       "name": "agents",
       "http": "GET",
-      "path": "/v1/reports/agents"
+      "path": "/v1/reports/agents",
+      "shape": "array"
     },
     {
       "ns": "reports",
       "name": "conversations_by_day",
       "http": "GET",
-      "path": "/v1/reports/conversations-by-day"
+      "path": "/v1/reports/conversations-by-day",
+      "shape": "array"
     },
     {
       "ns": "reports",
       "name": "overview",
       "http": "GET",
-      "path": "/v1/reports/overview"
+      "path": "/v1/reports/overview",
+      "shape": "object"
     },
     {
       "ns": "reports",
       "name": "sla",
       "http": "GET",
-      "path": "/v1/reports/sla"
+      "path": "/v1/reports/sla",
+      "shape": "object"
     },
     {
       "ns": "root",
       "name": "whoami",
       "http": "GET",
-      "path": "/v1/api-keys/whoami"
+      "path": "/v1/api-keys/whoami",
+      "shape": "object"
     },
     {
       "ns": "search",
       "name": "query",
       "http": "GET",
-      "path": "/v1/search"
+      "path": "/v1/search",
+      "shape": "page"
     },
     {
       "ns": "tickets",
       "name": "bulk",
       "http": "POST",
-      "path": "/v1/tickets/bulk"
+      "path": "/v1/tickets/bulk",
+      "shape": "object"
     },
     {
       "ns": "tickets",
       "name": "comments",
       "http": "GET",
-      "path": "/v1/tickets/{id}/comments"
+      "path": "/v1/tickets/{id}/comments",
+      "shape": "array"
     },
     {
       "ns": "tickets",
       "name": "for_conversation",
       "http": "GET",
-      "path": "/v1/tickets/for-conversation/{conversation_id}"
+      "path": "/v1/tickets/for-conversation/{conversation_id}",
+      "shape": "array"
     },
     {
       "ns": "tickets",
       "name": "list",
       "http": "GET",
-      "path": "/v1/tickets"
+      "path": "/v1/tickets",
+      "shape": "page"
     },
     {
       "ns": "tickets",
       "name": "merge",
       "http": "POST",
-      "path": "/v1/tickets/{id}/merge"
+      "path": "/v1/tickets/{id}/merge",
+      "shape": "object"
     },
     {
       "ns": "tickets",
       "name": "queues",
       "http": "GET",
-      "path": "/v1/tickets/queues"
+      "path": "/v1/tickets/queues",
+      "shape": "array"
     },
     {
       "ns": "tickets",
       "name": "split",
       "http": "POST",
-      "path": "/v1/tickets/{id}/split"
+      "path": "/v1/tickets/{id}/split",
+      "shape": "object"
     },
     {
       "ns": "webhooks",
       "name": "deliveries",
       "http": "GET",
-      "path": "/v1/webhooks/deliveries"
+      "path": "/v1/webhooks/deliveries",
+      "shape": "page"
     },
     {
       "ns": "webhooks",
       "name": "delivery",
       "http": "GET",
-      "path": "/v1/webhooks/deliveries/{id}"
+      "path": "/v1/webhooks/deliveries/{id}",
+      "shape": "object"
     },
     {
       "ns": "webhooks",
       "name": "redeliver",
       "http": "POST",
-      "path": "/v1/webhooks/deliveries/{id}/redeliver"
+      "path": "/v1/webhooks/deliveries/{id}/redeliver",
+      "shape": "object"
     },
     {
       "ns": "workspace",
       "name": "agent_skills",
       "http": "GET",
-      "path": "/v1/agents/skills"
+      "path": "/v1/agents/skills",
+      "shape": "object"
     },
     {
       "ns": "workspace",
       "name": "inboxes",
       "http": "GET",
-      "path": "/v1/inboxes"
+      "path": "/v1/inboxes",
+      "shape": "array"
     },
     {
       "ns": "workspace",
       "name": "labels",
       "http": "GET",
-      "path": "/v1/labels"
+      "path": "/v1/labels",
+      "shape": "array"
     },
     {
       "ns": "workspace",
       "name": "settings",
       "http": "GET",
-      "path": "/v1/workspace/settings"
+      "path": "/v1/workspace/settings",
+      "shape": "object"
     },
     {
       "ns": "workspace",
       "name": "team_members",
       "http": "GET",
-      "path": "/v1/teams/{id}/members"
+      "path": "/v1/teams/{id}/members",
+      "shape": "array"
     }
   ]
 }

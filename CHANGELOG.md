@@ -53,6 +53,16 @@ First release.
   grepping source text, where a path in a comment counted as a call. The test
   rewrites the file and fails when it differed, so a green run is the proof
   that the committed artifact matches the code.
+- Each lock row also carries the top-level response `shape` that route
+  answers — `array`, `page`, `object` or `empty`. The column is hand-written
+  in `surfaceCases` from the handlers and deliberately NOT read from the
+  shared manifest: a fake transport fed the manifest's own shape agrees with
+  whatever the manifest says, including when it is wrong, which is how two
+  sibling SDKs shipped a paginator over the bare-array `GET /v1/macros` with
+  green suites. The fake now answers each route with a body of that route's
+  declared shape, every method is asserted to hand back a value of that
+  shape, and every auto-paginator is asserted to ERROR on a bare array rather
+  than return an empty page.
 
 ### Known limitations
 

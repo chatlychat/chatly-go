@@ -195,3 +195,76 @@ func TestMacrosListIsABareArrayNotAPage(t *testing.T) {
 		t.Fatal("there is a pager for macros.list; the route is @PaginationExempt and sends no cursor")
 	}
 }
+
+// The negative direction: a paginator fed the WRONG shape must fail LOUDLY.
+//
+// TestEveryMethodHitsItsDocumentedRoute proves each method copes with the
+// shape this SDK declares its route sends. It cannot prove the declaration
+// matters — a decoder that ignored the body entirely would pass it. This one
+// feeds every auto-paginator a bare array where it expects
+// {items, nextCursor} and requires an error, which is the answer the real API
+// handed the .NET and Rust clients on macros.list.
+//
+// "Loudly" is the whole point. Go's encoding/json will decode some wrong
+// bodies into a zero-valued struct and report nothing, and the Rust client
+// did exactly that: it read a bare array as an EMPTY PAGE and returned it
+// with a 200, so the caller got "no results" instead of an error. A pager
+// here that ends the walk with Err() == nil has that bug, and the assertion
+// below distinguishes the two cases rather than only checking Next.
+func TestEveryAutoPaginatorRejectsABareArrayWhereAPageIsExpected(t *testing.T) {
+	pagers := sdkPagers()
+
+	// One pager per `page` route, and nothing else — the floor that stops
+	// this test quietly shrinking. The set comes from this SDK's own
+	// hand-written shape column, not from the manifest's `paged` flag, so a
+	// manifest that lost a flag cannot shrink what is exercised here.
+	declared := make(map[string]bool)
+	for _, tc := range surfaceCases() {
+		if tc.shape == shapePage {
+			declared[tc.name] = true
+		}
+	}
+	if len(declared) != 10 {
+		t.Fatalf("%d routes are declared `page`, expected 10", len(declared))
+	}
+	for key := range declared {
+		if _, ok := pagers[key]; !ok {
+			t.Errorf("%s is declared `page` but has no auto-paginator to exercise", key)
+		}
+	}
+	for key := range pagers {
+		if !declared[key] {
+			t.Errorf("there is a pager for %s, which this SDK does not declare `page`", key)
+		}
+	}
+
+	for key, build := range pagers {
+		key, build := key, build
+		t.Run(key, func(t *testing.T) {
+			var hits int
+			c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				hits++
+				w.Header().Set("content-type", "application/json")
+				_, _ = w.Write([]byte(`[{"id":"x_1"}]`))
+			}))
+			p := build(c)
+			if p.Next(context.Background()) {
+				t.Fatalf("%s yielded %v from a bare array", key, p.Value())
+			}
+			if p.Err() == nil {
+				t.Fatalf("%s's paginator accepted a bare array as a page and ended the walk with "+
+					"no error: a caller sees an empty result set instead of a decode failure, "+
+					"which is a wrong answer rather than a missing one", key)
+			}
+			// The error has to come from reading the RESPONSE. A pager that
+			// never issued the request would satisfy the assertion above for
+			// the wrong reason.
+			if hits != 1 {
+				t.Errorf("%s made %d requests before failing, want exactly 1", key, hits)
+			}
+			if p.Count() != 0 {
+				t.Errorf("%s yielded %d items from a non-page body", key, p.Count())
+			}
+		})
+	}
+}

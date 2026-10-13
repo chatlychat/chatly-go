@@ -2,6 +2,7 @@
   "$auditedAgainst": "141 routes carry @AllowApiKey() in apps/api, verified 2026-10-12 by decorator-block parse AND by a reader of the controllers. Two entries here were wrong on the first pass: GET /v1/teams has no @AllowApiKey (the decorator belongs to /teams/{id}/members below it) and GET /v1/agents has no handler at all (the agents controller serves only /agents/skills). Both would have 403ed and 404ed in ten SDKs. If you add an entry, prove the route is key-accessible by reading the handler, not by a nearest-decorator grep.",
   "$comment": "SINGLE SOURCE OF TRUTH for every Chatly backend SDK. scripts/check-sdk-surface-parity.mjs reads this file and fails if any SDK is missing an entry. Adding a method means adding it HERE first, then in every SDK. Every path below is key-accessible: it carries @AllowApiKey() in apps/api. A route that does not is not SDK surface, because a `ck_` key gets 403 from it.",
   "$pagedMeans": "The route answers `{ items, nextCursor }` and every SDK offers an auto-paginating form of it. This read 8 for a day and was wrong in both directions: `macros.list` was flagged and is `@PaginationExempt` (a bare array, 200 rows by usage rank), while `contacts.journey`, `conversations.unattended` and `search.query` return real cursors and were not flagged. Ten now. The author of the Java SDK found the three omissions by reading the handlers rather than trusting this file.",
+  "$shapeMeans": "The TOP-LEVEL shape of a 200/201 body, derived from the handler's `@ZodResponse` schema (or, where it has none, the service return type it forwards). One of four: `array` — a bare JSON array, 14 routes; `page` — the cursor envelope, `items` plus `nextCursor`, with whatever sits beside them — `hasMore` on the FOUR built by `buildPaginatedResponse` (`tickets.list`, `kb.articles`, `events.list`, `webhooks.deliveries`), `total` on `conversations.unattended`, `tier` and `facets` on `search.query`, and nothing at all on the five built by the local `pageOf` helpers — 10 routes; `object` — a JSON object that is not a page, 30 routes; `empty` — no body at all, a real 204, exactly 1 route (`macros.delete`). Derive it from the schema and never from the route name: `contacts.remove_tag` is a DELETE that answers with the surviving contact and `conversations.cancel_scheduled` answers with the cancelled row, so two of the three deletes on this surface have bodies. `macros.list` is the `array` that cost two SDKs a decode error. The ten `page` routes are exactly the ten carrying `paged: true`, and `scripts/check-sdk-surface-parity.mjs` asserts that correspondence in both directions, so the two fields cannot drift apart. Every SDK declares its own expected shape per route in its lock, and the gate diffs all eight against this file — eight independent witnesses, none of them reading this field.",
   "version": 1,
   "baseUrl": "https://api.chatlychat.com",
   "auth": {
@@ -15,26 +16,30 @@
       "ns": "root",
       "name": "whoami",
       "http": "GET",
-      "path": "/v1/api-keys/whoami"
+      "path": "/v1/api-keys/whoami",
+      "shape": "object"
     },
     {
       "ns": "contacts",
       "name": "list",
       "http": "GET",
       "path": "/v1/contacts",
+      "shape": "page",
       "paged": true
     },
     {
       "ns": "contacts",
       "name": "get",
       "http": "GET",
-      "path": "/v1/contacts/{id}"
+      "path": "/v1/contacts/{id}",
+      "shape": "object"
     },
     {
       "ns": "contacts",
       "name": "upsert",
       "http": "POST",
       "path": "/v1/contacts",
+      "shape": "object",
       "write": true
     },
     {
@@ -42,6 +47,7 @@
       "name": "bulk_upsert",
       "http": "POST",
       "path": "/v1/contacts/bulk",
+      "shape": "object",
       "write": true
     },
     {
@@ -49,6 +55,7 @@
       "name": "merge",
       "http": "POST",
       "path": "/v1/contacts/{id}/merge",
+      "shape": "object",
       "write": true
     },
     {
@@ -56,6 +63,7 @@
       "name": "add_tags",
       "http": "POST",
       "path": "/v1/contacts/{id}/tags",
+      "shape": "object",
       "write": true
     },
     {
@@ -63,13 +71,16 @@
       "name": "remove_tag",
       "http": "DELETE",
       "path": "/v1/contacts/{id}/tags/{tag}",
-      "write": true
+      "shape": "object",
+      "write": true,
+      "$note": "A DELETE with a BODY: it answers 200 with the surviving contact (`contactResponseSchema`), the same object the tag POST returns. Only `macros.delete` on this surface is a real 204."
     },
     {
       "ns": "contacts",
       "name": "unsubscribe",
       "http": "POST",
       "path": "/v1/contacts/{id}/unsubscribe",
+      "shape": "object",
       "write": true
     },
     {
@@ -77,6 +88,7 @@
       "name": "journey",
       "http": "GET",
       "path": "/v1/contacts/{id}/journey",
+      "shape": "page",
       "paged": true,
       "$note": "The cursor is an ISO-8601 instant, not an opaque string — `journeyQuerySchema` declares `cursor: z.string().datetime({ offset: true })`. It is still a cursor: walk it, never construct it."
     },
@@ -85,19 +97,22 @@
       "name": "list",
       "http": "GET",
       "path": "/v1/conversations",
+      "shape": "page",
       "paged": true
     },
     {
       "ns": "conversations",
       "name": "get",
       "http": "GET",
-      "path": "/v1/conversations/{id}"
+      "path": "/v1/conversations/{id}",
+      "shape": "object"
     },
     {
       "ns": "conversations",
       "name": "messages",
       "http": "GET",
       "path": "/v1/conversations/{id}/messages",
+      "shape": "page",
       "paged": true
     },
     {
@@ -105,6 +120,7 @@
       "name": "send",
       "http": "POST",
       "path": "/v1/conversations/{id}/messages",
+      "shape": "object",
       "write": true
     },
     {
@@ -112,45 +128,52 @@
       "name": "unattended",
       "http": "GET",
       "path": "/v1/conversations/unattended",
+      "shape": "page",
       "paged": true
     },
     {
       "ns": "conversations",
       "name": "agent_handling",
       "http": "GET",
-      "path": "/v1/conversations/{id}/agent-handling"
+      "path": "/v1/conversations/{id}/agent-handling",
+      "shape": "object"
     },
     {
       "ns": "conversations",
       "name": "set_agent_handling",
       "http": "PUT",
       "path": "/v1/conversations/{id}/agent-handling",
+      "shape": "object",
       "write": true
     },
     {
       "ns": "conversations",
       "name": "generated_replies",
       "http": "GET",
-      "path": "/v1/conversations/{id}/generated-replies"
+      "path": "/v1/conversations/{id}/generated-replies",
+      "shape": "array"
     },
     {
       "ns": "conversations",
       "name": "generate_reply",
       "http": "POST",
       "path": "/v1/conversations/{id}/generated-replies",
+      "shape": "object",
       "write": true
     },
     {
       "ns": "conversations",
       "name": "scheduled_messages",
       "http": "GET",
-      "path": "/v1/conversations/{id}/scheduled-messages"
+      "path": "/v1/conversations/{id}/scheduled-messages",
+      "shape": "array"
     },
     {
       "ns": "conversations",
       "name": "schedule_message",
       "http": "POST",
       "path": "/v1/conversations/{id}/scheduled-messages",
+      "shape": "object",
       "write": true
     },
     {
@@ -158,38 +181,45 @@
       "name": "cancel_scheduled",
       "http": "DELETE",
       "path": "/v1/conversations/scheduled-messages/{scheduled_id}",
-      "write": true
+      "shape": "object",
+      "write": true,
+      "$note": "A DELETE with a BODY: 200 and the cancelled `scheduledMessageSchema` row, so a caller can show what it just called off. Not a 204."
     },
     {
       "ns": "tickets",
       "name": "list",
       "http": "GET",
       "path": "/v1/tickets",
+      "shape": "page",
       "paged": true
     },
     {
       "ns": "tickets",
       "name": "comments",
       "http": "GET",
-      "path": "/v1/tickets/{id}/comments"
+      "path": "/v1/tickets/{id}/comments",
+      "shape": "array"
     },
     {
       "ns": "tickets",
       "name": "for_conversation",
       "http": "GET",
-      "path": "/v1/tickets/for-conversation/{conversation_id}"
+      "path": "/v1/tickets/for-conversation/{conversation_id}",
+      "shape": "array"
     },
     {
       "ns": "tickets",
       "name": "queues",
       "http": "GET",
-      "path": "/v1/tickets/queues"
+      "path": "/v1/tickets/queues",
+      "shape": "array"
     },
     {
       "ns": "tickets",
       "name": "merge",
       "http": "POST",
       "path": "/v1/tickets/{id}/merge",
+      "shape": "object",
       "write": true
     },
     {
@@ -197,6 +227,7 @@
       "name": "split",
       "http": "POST",
       "path": "/v1/tickets/{id}/split",
+      "shape": "object",
       "write": true
     },
     {
@@ -204,6 +235,7 @@
       "name": "bulk",
       "http": "POST",
       "path": "/v1/tickets/bulk",
+      "shape": "object",
       "write": true
     },
     {
@@ -211,6 +243,7 @@
       "name": "list",
       "http": "GET",
       "path": "/v1/macros",
+      "shape": "array",
       "$note": "NOT paged: the handler carries @PaginationExempt and returns a bare array capped at 200, ordered by usage rank. This said `paged: true` for a day, and the .NET and Rust clients both raised a decode error on it while their surface-lock suites stayed green — their fake transports answer every route with a page envelope."
     },
     {
@@ -218,6 +251,7 @@
       "name": "create",
       "http": "POST",
       "path": "/v1/macros",
+      "shape": "object",
       "write": true
     },
     {
@@ -225,6 +259,7 @@
       "name": "update",
       "http": "PATCH",
       "path": "/v1/macros/{id}",
+      "shape": "object",
       "write": true
     },
     {
@@ -232,32 +267,38 @@
       "name": "delete",
       "http": "DELETE",
       "path": "/v1/macros/{id}",
-      "write": true
+      "shape": "empty",
+      "write": true,
+      "$note": "The ONLY 204 on this surface — `@HttpCode(204)`, and the handler awaits and returns nothing. An SDK must not try to parse a body here."
     },
     {
       "ns": "kb",
       "name": "articles",
       "http": "GET",
       "path": "/v1/kb/articles",
+      "shape": "page",
       "paged": true
     },
     {
       "ns": "kb",
       "name": "article",
       "http": "GET",
-      "path": "/v1/kb/articles/{slug}"
+      "path": "/v1/kb/articles/{slug}",
+      "shape": "object"
     },
     {
       "ns": "kb",
       "name": "collections",
       "http": "GET",
-      "path": "/v1/kb/collections"
+      "path": "/v1/kb/collections",
+      "shape": "array"
     },
     {
       "ns": "search",
       "name": "query",
       "http": "GET",
       "path": "/v1/search",
+      "shape": "page",
       "paged": true,
       "$note": "The single-page form returns the whole envelope, not just `items`: the response carries `facets` and a `tier` beside them, and a paginator that yields only hits throws those away."
     },
@@ -266,6 +307,7 @@
       "name": "track",
       "http": "POST",
       "path": "/v1/cdp/events",
+      "shape": "object",
       "write": true
     },
     {
@@ -273,6 +315,7 @@
       "name": "list",
       "http": "GET",
       "path": "/v1/cdp/events",
+      "shape": "page",
       "paged": true
     },
     {
@@ -280,99 +323,118 @@
       "name": "deliveries",
       "http": "GET",
       "path": "/v1/webhooks/deliveries",
+      "shape": "page",
       "paged": true
     },
     {
       "ns": "webhooks",
       "name": "delivery",
       "http": "GET",
-      "path": "/v1/webhooks/deliveries/{id}"
+      "path": "/v1/webhooks/deliveries/{id}",
+      "shape": "object"
     },
     {
       "ns": "webhooks",
       "name": "redeliver",
       "http": "POST",
       "path": "/v1/webhooks/deliveries/{id}/redeliver",
+      "shape": "object",
       "write": true
     },
     {
       "ns": "reports",
       "name": "overview",
       "http": "GET",
-      "path": "/v1/reports/overview"
+      "path": "/v1/reports/overview",
+      "shape": "object",
+      "$note": "An OBJECT (`{ windowDays, openConversations, messagesSent, csat }`), unlike its two array-returning neighbours above."
     },
     {
       "ns": "reports",
       "name": "agents",
       "http": "GET",
-      "path": "/v1/reports/agents"
+      "path": "/v1/reports/agents",
+      "shape": "array",
+      "$note": "A bare ARRAY of per-agent rows (`Promise<AgentReportRow[]>`), not a rollup object. Three of the four report routes look alike and two of them are arrays."
     },
     {
       "ns": "reports",
       "name": "conversations_by_day",
       "http": "GET",
-      "path": "/v1/reports/conversations-by-day"
+      "path": "/v1/reports/conversations-by-day",
+      "shape": "array",
+      "$note": "A bare ARRAY of `{ day, count }` buckets — the service returns the grouped rows as they come back, with no envelope."
     },
     {
       "ns": "reports",
       "name": "sla",
       "http": "GET",
-      "path": "/v1/reports/sla"
+      "path": "/v1/reports/sla",
+      "shape": "object"
     },
     {
       "ns": "channels",
       "name": "list",
       "http": "GET",
-      "path": "/v1/channels"
+      "path": "/v1/channels",
+      "shape": "array"
     },
     {
       "ns": "channels",
       "name": "get",
       "http": "GET",
-      "path": "/v1/channels/{id}"
+      "path": "/v1/channels/{id}",
+      "shape": "object"
     },
     {
       "ns": "billing",
       "name": "plans",
       "http": "GET",
-      "path": "/v1/billing/plans"
+      "path": "/v1/billing/plans",
+      "shape": "array"
     },
     {
       "ns": "billing",
       "name": "usage",
       "http": "GET",
       "path": "/v1/billing/usage",
+      "shape": "object",
       "$requires": "eventType — the handler validates it against a closed list and throws before doing anything else, so a call with no query is a 400. Four SDKs shipped it as an optional argument."
     },
     {
       "ns": "workspace",
       "name": "settings",
       "http": "GET",
-      "path": "/v1/workspace/settings"
+      "path": "/v1/workspace/settings",
+      "shape": "object"
     },
     {
       "ns": "workspace",
       "name": "labels",
       "http": "GET",
-      "path": "/v1/labels"
+      "path": "/v1/labels",
+      "shape": "array"
     },
     {
       "ns": "workspace",
       "name": "inboxes",
       "http": "GET",
-      "path": "/v1/inboxes"
+      "path": "/v1/inboxes",
+      "shape": "array"
     },
     {
       "ns": "workspace",
       "name": "team_members",
       "http": "GET",
-      "path": "/v1/teams/{id}/members"
+      "path": "/v1/teams/{id}/members",
+      "shape": "array"
     },
     {
       "ns": "workspace",
       "name": "agent_skills",
       "http": "GET",
-      "path": "/v1/agents/skills"
+      "path": "/v1/agents/skills",
+      "shape": "object"
     }
   ],
   "helpers": [
