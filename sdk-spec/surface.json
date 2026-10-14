@@ -1,8 +1,8 @@
 {
-  "$auditedAgainst": "141 routes carry @AllowApiKey() in apps/api, verified 2026-10-12 by decorator-block parse AND by a reader of the controllers. Two entries here were wrong on the first pass: GET /v1/teams has no @AllowApiKey (the decorator belongs to /teams/{id}/members below it) and GET /v1/agents has no handler at all (the agents controller serves only /agents/skills). Both would have 403ed and 404ed in ten SDKs. If you add an entry, prove the route is key-accessible by reading the handler, not by a nearest-decorator grep.",
+  "$auditedAgainst": "162 of the key-accessible routes in apps/api, each verified against its handler. Do NOT read a total out of this line: `node scripts/report-api-key-surface.mjs --json` is the live count and printed {open: 174, total: 909} on 2026-10-14. This field said \"148 routes carry @AllowApiKey()\" beside 159 entries \u2014 a leading number smaller than the list it introduced \u2014 because the count was frozen in prose on 2026-10-12 and routes were opened after it. The three routes added on 2026-10-14 were each found by more than one SDK author reading handlers, and each verified again before being listed: `webhooks.delete` (webhooks.module.ts:511, @AllowApiKey + integrations:write, answers `{ok: true}`), `root.me` (auth.controller.ts:252, whose docblock calls it the liveness check every SDK wants) and `workspace.mine` (workspaces.controller.ts:167, `z.array(workspaceListItemSchema)`). Adding a route here puts every SDK into `debt` in check-sdk-surface-parity until it implements it \u2014 that is the mechanism working, not a failure.",
   "$comment": "SINGLE SOURCE OF TRUTH for every Chatly backend SDK. scripts/check-sdk-surface-parity.mjs reads this file and fails if any SDK is missing an entry. Adding a method means adding it HERE first, then in every SDK. Every path below is key-accessible: it carries @AllowApiKey() in apps/api. A route that does not is not SDK surface, because a `ck_` key gets 403 from it.",
-  "$pagedMeans": "The route answers `{ items, nextCursor }` and every SDK offers an auto-paginating form of it. This read 8 for a day and was wrong in both directions: `macros.list` was flagged and is `@PaginationExempt` (a bare array, 200 rows by usage rank), while `contacts.journey`, `conversations.unattended` and `search.query` return real cursors and were not flagged. Ten now. The author of the Java SDK found the three omissions by reading the handlers rather than trusting this file.",
-  "$shapeMeans": "The TOP-LEVEL shape of a 200/201 body, derived from the handler's `@ZodResponse` schema (or, where it has none, the service return type it forwards). One of four: `array` — a bare JSON array, 14 routes; `page` — the cursor envelope, `items` plus `nextCursor`, with whatever sits beside them — `hasMore` on the FOUR built by `buildPaginatedResponse` (`tickets.list`, `kb.articles`, `events.list`, `webhooks.deliveries`), `total` on `conversations.unattended`, `tier` and `facets` on `search.query`, and nothing at all on the five built by the local `pageOf` helpers — 10 routes; `object` — a JSON object that is not a page, 30 routes; `empty` — no body at all, a real 204, exactly 1 route (`macros.delete`). Derive it from the schema and never from the route name: `contacts.remove_tag` is a DELETE that answers with the surviving contact and `conversations.cancel_scheduled` answers with the cancelled row, so two of the three deletes on this surface have bodies. `macros.list` is the `array` that cost two SDKs a decode error. The ten `page` routes are exactly the ten carrying `paged: true`, and `scripts/check-sdk-surface-parity.mjs` asserts that correspondence in both directions, so the two fields cannot drift apart. Every SDK declares its own expected shape per route in its lock, and the gate diffs all eight against this file — eight independent witnesses, none of them reading this field.",
+  "$pagedMeans": "The route answers `{ items, nextCursor }` and every SDK offers an auto-paginating form of it. 13 now. This read 8 for a day and was wrong in both directions: `macros.list` was flagged and is `@PaginationExempt` (a bare array, 200 rows by usage rank), while `contacts.journey`, `conversations.unattended` and `search.query` return real cursors and were not flagged. The author of the Java SDK found the three omissions by reading the handlers rather than trusting this file.",
+  "$shapeMeans": "The TOP-LEVEL shape of a 200/201 body, derived from the handler's `@ZodResponse` schema (or, where it has none, the service return type it forwards). One of four: `array` \u2014 a bare JSON array, 33 routes (one of them, `channels.adapters`, is an array of STRINGS rather than objects, which is why a decoder built only for `[]Object` fails on exactly one row); `page` \u2014 the cursor envelope, `items` plus `nextCursor`, with whatever sits beside them \u2014 `hasMore` on the SEVEN built by `buildPaginatedResponse` (`tickets.list`, `kb.articles`, `events.list`, `webhooks.deliveries`, and the three added later: `bots.list`, `bots.deliveries`, `triggers.list`), `total` on `conversations.unattended`, `tier` and `facets` on `search.query`, and nothing at all on the rest, built by the local `pageOf` helpers \u2014 13 routes; `object` \u2014 a JSON object that is not a page, 115 routes; `empty` \u2014 no body at all, a real 204, exactly 1 route (`macros.delete`); seven other DELETEs answer 200 WITH a body and are `object`. NOTE: `billing.invoices` is genuinely cursor-paginated and is deliberately `object` with `paged: false`, because its envelope key is `data`, not `items` \u2014 an SDK that offers a walker keyed on `items` for it reports an empty page forever. Four SDK authors derived this whole column independently from the handlers on 2026-10-14 and agreed with every row; the numbers above had said 14 / 10 / 30 / 1 since the manifest covered 55 routes. The three routes added on 2026-10-14 brought array to 33 and object to 115; `webhooks.delete` makes seven DELETEs that answer 200 with a body, and it is the only one of them that also 404s on a miss (its service returns the deleted row and checks for absence) \u2014 `ai.delete_tool` and `bot_routes.delete` report success for an id that never existed.",
   "version": 1,
   "baseUrl": "https://api.chatlychat.com",
   "auth": {
@@ -13,32 +13,350 @@
   },
   "entries": [
     {
-      "ns": "root",
-      "name": "whoami",
-      "http": "GET",
-      "path": "/v1/api-keys/whoami",
+      "ns": "ai",
+      "name": "add_provider",
+      "http": "POST",
+      "path": "/v1/ai-providers",
       "shape": "object"
     },
     {
-      "ns": "contacts",
+      "ns": "ai",
+      "name": "create_tool",
+      "http": "POST",
+      "path": "/v1/ai/tools",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "delete_tool",
+      "http": "DELETE",
+      "path": "/v1/ai/tools/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "generate_tone",
+      "http": "POST",
+      "path": "/v1/ai/tone/generate",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "providers",
+      "http": "GET",
+      "path": "/v1/ai-providers",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "quota",
+      "http": "GET",
+      "path": "/v1/ai/quota",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "set_tone",
+      "http": "PUT",
+      "path": "/v1/ai/tone",
+      "shape": "array"
+    },
+    {
+      "ns": "ai",
+      "name": "test_provider",
+      "http": "POST",
+      "path": "/v1/ai-providers/{provider}/test",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "tone",
+      "http": "GET",
+      "path": "/v1/ai/tone",
+      "shape": "array"
+    },
+    {
+      "ns": "ai",
+      "name": "tone_preview",
+      "http": "GET",
+      "path": "/v1/ai/tone/preview",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "tools",
+      "http": "GET",
+      "path": "/v1/ai/tools",
+      "shape": "array"
+    },
+    {
+      "ns": "ai",
+      "name": "update_tool",
+      "http": "PATCH",
+      "path": "/v1/ai/tools/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "billing",
+      "name": "invoices",
+      "http": "GET",
+      "path": "/v1/billing/invoices",
+      "shape": "object"
+    },
+    {
+      "ns": "billing",
+      "name": "plans",
+      "http": "GET",
+      "path": "/v1/billing/plans",
+      "shape": "array"
+    },
+    {
+      "ns": "billing",
+      "name": "summary",
+      "http": "GET",
+      "path": "/v1/billing",
+      "shape": "object"
+    },
+    {
+      "ns": "billing",
+      "name": "usage",
+      "http": "GET",
+      "path": "/v1/billing/usage",
+      "shape": "object",
+      "$requires": "eventType \u2014 the handler validates it against a closed list and throws before doing anything else, so a call with no query is a 400. Four SDKs shipped it as an optional argument."
+    },
+    {
+      "ns": "billing",
+      "name": "usage_daily",
+      "http": "GET",
+      "path": "/v1/billing/usage/daily",
+      "shape": "object"
+    },
+    {
+      "ns": "billing",
+      "name": "usage_monthly",
+      "http": "GET",
+      "path": "/v1/billing/usage/monthly",
+      "shape": "object"
+    },
+    {
+      "ns": "bot_routes",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/bot-routes",
+      "shape": "object"
+    },
+    {
+      "ns": "bot_routes",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/bot-routes/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "bot_routes",
+      "name": "fields",
+      "http": "GET",
+      "path": "/v1/bot-routes/fields",
+      "shape": "object"
+    },
+    {
+      "ns": "bot_routes",
       "name": "list",
       "http": "GET",
-      "path": "/v1/contacts",
+      "path": "/v1/bot-routes",
+      "shape": "array"
+    },
+    {
+      "ns": "bot_routes",
+      "name": "resolve",
+      "http": "POST",
+      "path": "/v1/bot-routes/resolve",
+      "shape": "object",
+      "$note": "A DRY RUN, and a read dressed as a POST: it writes nothing and takes a hypothetical visitor in the body. Answers { selected, routes, event } \u2014 every enabled route with its verdict in evaluation order, plus the event object the conditions were evaluated against. `explainRoutes` is the production decision: `pickRoute`, which the worker calls on every message, is a wrapper that discards the explanation."
+    },
+    {
+      "ns": "bot_routes",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/bot-routes/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "analytics",
+      "http": "GET",
+      "path": "/v1/bots/{id}/analytics",
+      "shape": "object",
+      "$note": "One bot's numbers for BOTH kinds of bot, from one route: latency p50/p95/max, failure rate, fallback count, resolution and handoff rate. The window is `?days` (1-365, default 30) and nothing else \u2014 `from`, `to`, `weeks` and `date` are REFUSED with a 400 rather than stripped. Latency is percentiles, never a mean. Every rate is null, not 0, when its sampleSize is 0. `botType` discriminates: `volume.retrying`, `reliability.fallbackCount` and `reliability.retriedCount` are null for a Chatly persona (it has no retry ladder and no fallback message) and `volume.cancelled` is null for an external agent. A null there means the kind cannot produce the number, never zero."
+    },
+    {
+      "ns": "bots",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/bots",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "deliveries",
+      "http": "GET",
+      "path": "/v1/bots/{id}/deliveries",
+      "shape": "page",
+      "paged": true,
+      "$note": "The external-agent delivery ledger: status, attempts, your HTTP status, latency, the first 300 chars of your error body. `?status=` takes pending|delivered|failed|dead. The signed payload is NOT in a list row \u2014 read one delivery for it."
+    },
+    {
+      "ns": "bots",
+      "name": "delivery",
+      "http": "GET",
+      "path": "/v1/bots/{id}/deliveries/{deliveryId}",
+      "shape": "object",
+      "$note": "Adds `payload`: the exact object that was serialised and signed. Typed as unknown in every SDK \u2014 a row written before a payload key existed carries the shape of that day."
+    },
+    {
+      "ns": "bots",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/bots/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/bots",
       "shape": "page",
       "paged": true
     },
     {
-      "ns": "contacts",
+      "ns": "bots",
+      "name": "redeliver",
+      "http": "POST",
+      "path": "/v1/bots/{id}/deliveries/{deliveryId}/redeliver",
+      "shape": "object",
+      "$note": "Re-sends the RECORDED payload from attempt 0 at the agent's CURRENT url and secret. Same eventId, so a receiver's own dedupe will discard it if they already processed that id."
+    },
+    {
+      "ns": "bots",
+      "name": "rotate_external_secret",
+      "http": "POST",
+      "path": "/v1/bots/{id}/external/rotate-secret",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "test_delivery",
+      "http": "POST",
+      "path": "/v1/bots/{id}/test-delivery",
+      "shape": "object",
+      "$note": "Signs a rehearsal payload (`test: true`, all-zero UUIDs) with the real secret, POSTs it to the real url, returns the response synchronously plus the signature and the signed payload. Writes nothing \u2014 no ledger row, so it does not appear under bots.deliveries."
+    },
+    {
+      "ns": "bots",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/bots/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "update_external",
+      "http": "PATCH",
+      "path": "/v1/bots/{id}/external",
+      "shape": "object"
+    },
+    {
+      "ns": "brands",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/brands",
+      "shape": "object"
+    },
+    {
+      "ns": "brands",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/brands/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "brands",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/brands",
+      "shape": "array"
+    },
+    {
+      "ns": "brands",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/brands/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "canvas_steps",
       "name": "get",
       "http": "GET",
-      "path": "/v1/contacts/{id}",
+      "path": "/v1/canvas-steps/{id}",
+      "shape": "object",
+      "$note": "The back half of an ASYNC canvas step. Your endpoint answered { pending: true } because a payment needed 3-D Secure or a fraud check; this reads the step you were given a correlation id for. The caller is a backend process minutes later with a `ck_` key and no visitor session \u2014 precisely the caller a 10-second synchronous timeout could not serve."
+    },
+    {
+      "ns": "canvas_steps",
+      "name": "resolve",
+      "http": "POST",
+      "path": "/v1/canvas-steps/{id}/resolve",
+      "shape": "object",
+      "$note": "Post the real next step. Body is { canvas }, strict. SINGLE-USE by construction: the claiming UPDATE carries status='pending' in its WHERE, so exactly one resolve wins and a second is told the step is already resolved \u2014 which is why the route is @OptionalIdempotency() rather than requiring a key for a guarantee it makes without one."
+    },
+    {
+      "ns": "channels",
+      "name": "adapters",
+      "http": "GET",
+      "path": "/v1/channels/adapters",
+      "shape": "array"
+    },
+    {
+      "ns": "channels",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/channels",
+      "shape": "object"
+    },
+    {
+      "ns": "channels",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/channels/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "channels",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/channels",
+      "shape": "array"
+    },
+    {
+      "ns": "channels",
+      "name": "rotate_secret",
+      "http": "POST",
+      "path": "/v1/channels/{id}/secret/rotate",
+      "shape": "object"
+    },
+    {
+      "ns": "channels",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/channels/{id}",
       "shape": "object"
     },
     {
       "ns": "contacts",
-      "name": "upsert",
+      "name": "add_tags",
       "http": "POST",
-      "path": "/v1/contacts",
+      "path": "/v1/contacts/{id}/tags",
       "shape": "object",
       "write": true
     },
@@ -52,6 +370,37 @@
     },
     {
       "ns": "contacts",
+      "name": "cards",
+      "http": "POST",
+      "path": "/v1/contacts/{contactId}/cards",
+      "shape": "object"
+    },
+    {
+      "ns": "contacts",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/contacts/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "contacts",
+      "name": "journey",
+      "http": "GET",
+      "path": "/v1/contacts/{id}/journey",
+      "shape": "page",
+      "paged": true,
+      "$note": "The cursor is an ISO-8601 instant, not an opaque string \u2014 `journeyQuerySchema` declares `cursor: z.string().datetime({ offset: true })`. It is still a cursor: walk it, never construct it."
+    },
+    {
+      "ns": "contacts",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/contacts",
+      "shape": "page",
+      "paged": true
+    },
+    {
+      "ns": "contacts",
       "name": "merge",
       "http": "POST",
       "path": "/v1/contacts/{id}/merge",
@@ -60,11 +409,10 @@
     },
     {
       "ns": "contacts",
-      "name": "add_tags",
-      "http": "POST",
-      "path": "/v1/contacts/{id}/tags",
-      "shape": "object",
-      "write": true
+      "name": "mood",
+      "http": "GET",
+      "path": "/v1/contacts/{id}/mood",
+      "shape": "object"
     },
     {
       "ns": "contacts",
@@ -85,12 +433,56 @@
     },
     {
       "ns": "contacts",
-      "name": "journey",
+      "name": "upsert",
+      "http": "POST",
+      "path": "/v1/contacts",
+      "shape": "object",
+      "write": true
+    },
+    {
+      "ns": "conversations",
+      "name": "agent_handling",
       "http": "GET",
-      "path": "/v1/contacts/{id}/journey",
-      "shape": "page",
-      "paged": true,
-      "$note": "The cursor is an ISO-8601 instant, not an opaque string — `journeyQuerySchema` declares `cursor: z.string().datetime({ offset: true })`. It is still a cursor: walk it, never construct it."
+      "path": "/v1/conversations/{id}/agent-handling",
+      "shape": "object"
+    },
+    {
+      "ns": "conversations",
+      "name": "cancel_scheduled",
+      "http": "DELETE",
+      "path": "/v1/conversations/scheduled-messages/{scheduled_id}",
+      "shape": "object",
+      "write": true,
+      "$note": "A DELETE with a BODY: 200 and the cancelled `scheduledMessageSchema` row, so a caller can show what it just called off. Not a 204."
+    },
+    {
+      "ns": "conversations",
+      "name": "generate_reply",
+      "http": "POST",
+      "path": "/v1/conversations/{id}/generated-replies",
+      "shape": "object",
+      "write": true
+    },
+    {
+      "ns": "conversations",
+      "name": "generated_replies",
+      "http": "GET",
+      "path": "/v1/conversations/{id}/generated-replies",
+      "shape": "array"
+    },
+    {
+      "ns": "conversations",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/conversations/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "conversations",
+      "name": "linked",
+      "http": "GET",
+      "path": "/v1/conversations/{id}/linked",
+      "shape": "object"
     },
     {
       "ns": "conversations",
@@ -102,13 +494,6 @@
     },
     {
       "ns": "conversations",
-      "name": "get",
-      "http": "GET",
-      "path": "/v1/conversations/{id}",
-      "shape": "object"
-    },
-    {
-      "ns": "conversations",
       "name": "messages",
       "http": "GET",
       "path": "/v1/conversations/{id}/messages",
@@ -117,9 +502,57 @@
     },
     {
       "ns": "conversations",
+      "name": "outcomes",
+      "http": "GET",
+      "path": "/v1/conversations/{id}/outcomes",
+      "shape": "object",
+      "$note": "An object CARRYING `items` with no cursor \u2014 `@PaginationExempt`, because one conversation has one resolution, one or two escalations and a purchase or none. Merged from three tables (`ai_resolutions`, `conversation_escalations`, the `conversation.purchased` cdp events), newest first, each arm capped at 20. Every row carries `source`, which is what tells your own `agent_report` apart from the visitor's `visitor_chip` chip click."
+    },
+    {
+      "ns": "conversations",
+      "name": "record_outcome",
+      "http": "POST",
+      "path": "/v1/conversations/{id}/outcomes",
+      "shape": "object",
+      "write": true,
+      "$note": "Three words, and each goes to the table a report already reads: `resolved` \u2192 `ai_resolutions` with `source = 'agent_report'` (migration 0609), counted as AI-resolved by the deflection funnel; `escalated` \u2192 `EscalationsService`, which REALLY hands the thread over (status pending, ownership released, your reason posted as an internal note) and is the same effect as the bot surface's `handoff`; `purchased` \u2192 a `conversation.purchased` cdp event that can complete a conversion goal. `outcomeRef` is REQUIRED on `purchased` (your order id, unique per workspace forever, enforced by a unique index) and `valueCents`/`currency` are REFUSED on the other two. **Chatly has no revenue report: the amount is stored and summed nowhere.** `created: false` means an equal outcome was already on record."
+    },
+    {
+      "ns": "conversations",
+      "name": "return_to_bot",
+      "http": "POST",
+      "path": "/v1/conversations/{id}/return-to-bot",
+      "shape": "object",
+      "$note": "The reverse of an escalation, and it did not exist before 2026-10-13: handoff was one-directional, so once a person touched a thread the assistant was out of it for good. Body is { botId } \u2014 REQUIRED, not defaulted to the previous owner, because a thread three assistants have touched has no obvious 'the' bot. Refuses a pending/snoozed/closed/merged conversation and a non-active bot; already-owned is a 200-shaped success, not an error. Publishes conversation.returned_to_bot (webhook schema version 2026-10-13)."
+    },
+    {
+      "ns": "conversations",
+      "name": "schedule_message",
+      "http": "POST",
+      "path": "/v1/conversations/{id}/scheduled-messages",
+      "shape": "object",
+      "write": true
+    },
+    {
+      "ns": "conversations",
+      "name": "scheduled_messages",
+      "http": "GET",
+      "path": "/v1/conversations/{id}/scheduled-messages",
+      "shape": "array"
+    },
+    {
+      "ns": "conversations",
       "name": "send",
       "http": "POST",
       "path": "/v1/conversations/{id}/messages",
+      "shape": "object",
+      "write": true
+    },
+    {
+      "ns": "conversations",
+      "name": "set_agent_handling",
+      "http": "PUT",
+      "path": "/v1/conversations/{id}/agent-handling",
       "shape": "object",
       "write": true
     },
@@ -133,143 +566,199 @@
     },
     {
       "ns": "conversations",
-      "name": "agent_handling",
+      "name": "unread_counts",
       "http": "GET",
-      "path": "/v1/conversations/{id}/agent-handling",
+      "path": "/v1/conversations/unread-counts",
       "shape": "object"
     },
     {
       "ns": "conversations",
-      "name": "set_agent_handling",
-      "http": "PUT",
-      "path": "/v1/conversations/{id}/agent-handling",
-      "shape": "object",
-      "write": true
+      "name": "update_blocks",
+      "http": "PATCH",
+      "path": "/v1/conversations/{id}/messages/{messageId}/blocks",
+      "shape": "object"
     },
     {
-      "ns": "conversations",
-      "name": "generated_replies",
-      "http": "GET",
-      "path": "/v1/conversations/{id}/generated-replies",
-      "shape": "array"
-    },
-    {
-      "ns": "conversations",
-      "name": "generate_reply",
+      "ns": "customer_card_endpoints",
+      "name": "activate_secret",
       "http": "POST",
-      "path": "/v1/conversations/{id}/generated-replies",
+      "path": "/v1/customer-card-endpoints/{id}/activate-secret",
       "shape": "object",
-      "write": true
+      "$note": "Promotes the secret `rotate_secret` minted. From this call it is the only one that signs, and the previous one is gone. A 409 when nothing is pending \u2014 which is a truthful answer to a caller that has lost track of a rotation, not an error to swallow."
     },
     {
-      "ns": "conversations",
-      "name": "scheduled_messages",
-      "http": "GET",
-      "path": "/v1/conversations/{id}/scheduled-messages",
-      "shape": "array"
-    },
-    {
-      "ns": "conversations",
-      "name": "schedule_message",
+      "ns": "customer_card_endpoints",
+      "name": "create",
       "http": "POST",
-      "path": "/v1/conversations/{id}/scheduled-messages",
+      "path": "/v1/customer-card-endpoints",
       "shape": "object",
-      "write": true
+      "$note": "`{ endpoint, secret }`, and the ONLY response besides rotate_secret that carries the value. `cce_`-prefixed, deliberately not the card's `cc_`. From this call every request to that url is signed with THIS secret and carries no `x-chatly-card-id`, so deploy the verifier first. Body is `{ url }` and `.strict()`; a url no configured card uses is a 400 (urls compare byte for byte, trailing slash included) and a url that already has one is a 409."
     },
     {
-      "ns": "conversations",
-      "name": "cancel_scheduled",
+      "ns": "customer_card_endpoints",
+      "name": "delete",
       "http": "DELETE",
-      "path": "/v1/conversations/scheduled-messages/{scheduled_id}",
+      "path": "/v1/customer-card-endpoints/{id}",
       "shape": "object",
-      "write": true,
-      "$note": "A DELETE with a BODY: 200 and the cancelled `scheduledMessageSchema` row, so a caller can show what it just called off. Not a 204."
+      "$note": "200 with `{ ok: true }`. Signing for that url reverts to the leading card's own secret and `x-chatly-card-id` comes back \u2014 a change at the receiver, not a cleanup."
     },
     {
-      "ns": "tickets",
+      "ns": "customer_card_endpoints",
       "name": "list",
       "http": "GET",
-      "path": "/v1/tickets",
+      "path": "/v1/customer-card-endpoints",
+      "shape": "array",
+      "$note": "A BARE ARRAY, like `customer_cards.list` \u2014 not `{ items }`, no cursor. `cardKeys` is the cards pointing at each url, and empty means that secret signs nothing. No secret, no prefix, no hash: a pending rotation shows as `pendingSecretSet: true`."
+    },
+    {
+      "ns": "customer_card_endpoints",
+      "name": "rotate_secret",
+      "http": "POST",
+      "path": "/v1/customer-card-endpoints/{id}/rotate-secret",
+      "shape": "object",
+      "$note": "Answers `{ secret, active: false }`. The secret signs NOTHING until `activate_secret`; that is the whole overlap window, and it is an order of operations rather than a span of time, because we emit one signature per request. Calling it twice before activating replaces the pending secret."
+    },
+    {
+      "ns": "customer_cards",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/customer-cards",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_cards",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/customer-cards/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_cards",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/customer-cards",
+      "shape": "array"
+    },
+    {
+      "ns": "customer_cards",
+      "name": "rotate_secret",
+      "http": "POST",
+      "path": "/v1/customer-cards/{id}/rotate-secret",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_cards",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/customer-cards/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/docs-sources",
+      "shape": "object"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/docs-sources/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "discover",
+      "http": "POST",
+      "path": "/v1/docs-sources/discover",
+      "shape": "array"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/docs-sources",
+      "shape": "array"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "providers",
+      "http": "GET",
+      "path": "/v1/docs-sources/providers",
+      "shape": "array"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "sync",
+      "http": "POST",
+      "path": "/v1/docs-sources/{id}/sync",
+      "shape": "object"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/docs-sources/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "webhook",
+      "http": "POST",
+      "path": "/v1/docs-sources/{id}/webhook",
+      "shape": "object"
+    },
+    {
+      "ns": "email_templates",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/email-templates/{kind}",
+      "shape": "object"
+    },
+    {
+      "ns": "email_templates",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/email-templates",
+      "shape": "array"
+    },
+    {
+      "ns": "email_templates",
+      "name": "preview",
+      "http": "POST",
+      "path": "/v1/email-templates/preview",
+      "shape": "object"
+    },
+    {
+      "ns": "email_templates",
+      "name": "update",
+      "http": "PUT",
+      "path": "/v1/email-templates/{kind}",
+      "shape": "object"
+    },
+    {
+      "ns": "events",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/cdp/events",
       "shape": "page",
       "paged": true
     },
     {
-      "ns": "tickets",
-      "name": "comments",
-      "http": "GET",
-      "path": "/v1/tickets/{id}/comments",
-      "shape": "array"
-    },
-    {
-      "ns": "tickets",
-      "name": "for_conversation",
-      "http": "GET",
-      "path": "/v1/tickets/for-conversation/{conversation_id}",
-      "shape": "array"
-    },
-    {
-      "ns": "tickets",
-      "name": "queues",
-      "http": "GET",
-      "path": "/v1/tickets/queues",
-      "shape": "array"
-    },
-    {
-      "ns": "tickets",
-      "name": "merge",
+      "ns": "events",
+      "name": "track",
       "http": "POST",
-      "path": "/v1/tickets/{id}/merge",
+      "path": "/v1/cdp/events",
       "shape": "object",
       "write": true
     },
     {
-      "ns": "tickets",
-      "name": "split",
-      "http": "POST",
-      "path": "/v1/tickets/{id}/split",
-      "shape": "object",
-      "write": true
-    },
-    {
-      "ns": "tickets",
-      "name": "bulk",
-      "http": "POST",
-      "path": "/v1/tickets/bulk",
-      "shape": "object",
-      "write": true
-    },
-    {
-      "ns": "macros",
-      "name": "list",
+      "ns": "kb",
+      "name": "article",
       "http": "GET",
-      "path": "/v1/macros",
-      "shape": "array",
-      "$note": "NOT paged: the handler carries @PaginationExempt and returns a bare array capped at 200, ordered by usage rank. This said `paged: true` for a day, and the .NET and Rust clients both raised a decode error on it while their surface-lock suites stayed green — their fake transports answer every route with a page envelope."
-    },
-    {
-      "ns": "macros",
-      "name": "create",
-      "http": "POST",
-      "path": "/v1/macros",
-      "shape": "object",
-      "write": true
-    },
-    {
-      "ns": "macros",
-      "name": "update",
-      "http": "PATCH",
-      "path": "/v1/macros/{id}",
-      "shape": "object",
-      "write": true
-    },
-    {
-      "ns": "macros",
-      "name": "delete",
-      "http": "DELETE",
-      "path": "/v1/macros/{id}",
-      "shape": "empty",
-      "write": true,
-      "$note": "The ONLY 204 on this surface — `@HttpCode(204)`, and the handler awaits and returns nothing. An SDK must not try to parse a body here."
+      "path": "/v1/kb/articles/{slug}",
+      "shape": "object"
     },
     {
       "ns": "kb",
@@ -281,17 +770,200 @@
     },
     {
       "ns": "kb",
-      "name": "article",
-      "http": "GET",
-      "path": "/v1/kb/articles/{slug}",
-      "shape": "object"
-    },
-    {
-      "ns": "kb",
       "name": "collections",
       "http": "GET",
       "path": "/v1/kb/collections",
       "shape": "array"
+    },
+    {
+      "ns": "knowledge_gaps",
+      "name": "draft",
+      "http": "POST",
+      "path": "/v1/knowledge-gaps/{id}/draft",
+      "shape": "object"
+    },
+    {
+      "ns": "knowledge_gaps",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/knowledge-gaps",
+      "shape": "array"
+    },
+    {
+      "ns": "knowledge_gaps",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/knowledge-gaps/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "macros",
+      "name": "actions",
+      "http": "GET",
+      "path": "/v1/macros/actions",
+      "shape": "object"
+    },
+    {
+      "ns": "macros",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/macros",
+      "shape": "object",
+      "write": true
+    },
+    {
+      "ns": "macros",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/macros/{id}",
+      "shape": "empty",
+      "write": true,
+      "$note": "The ONLY 204 on this surface \u2014 `@HttpCode(204)`, and the handler awaits and returns nothing. An SDK must not try to parse a body here."
+    },
+    {
+      "ns": "macros",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/macros/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "macros",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/macros",
+      "shape": "array",
+      "$note": "NOT paged: the handler carries @PaginationExempt and returns a bare array capped at 200, ordered by usage rank. This said `paged: true` for a day, and the .NET and Rust clients both raised a decode error on it while their surface-lock suites stayed green \u2014 their fake transports answer every route with a page envelope."
+    },
+    {
+      "ns": "macros",
+      "name": "template",
+      "http": "GET",
+      "path": "/v1/macros/templates/{slug}",
+      "shape": "object"
+    },
+    {
+      "ns": "macros",
+      "name": "templates",
+      "http": "GET",
+      "path": "/v1/macros/templates",
+      "shape": "object"
+    },
+    {
+      "ns": "macros",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/macros/{id}",
+      "shape": "object",
+      "write": true
+    },
+    {
+      "ns": "reports",
+      "name": "agents",
+      "http": "GET",
+      "path": "/v1/reports/agents",
+      "shape": "array",
+      "$note": "A bare ARRAY of per-agent rows (`Promise<AgentReportRow[]>`), not a rollup object. Three of the four report routes look alike and two of them are arrays."
+    },
+    {
+      "ns": "reports",
+      "name": "attribution",
+      "http": "GET",
+      "path": "/v1/reports/attribution",
+      "shape": "array"
+    },
+    {
+      "ns": "reports",
+      "name": "cohorts",
+      "http": "GET",
+      "path": "/v1/reports/cohorts",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "conversations_by_day",
+      "http": "GET",
+      "path": "/v1/reports/conversations-by-day",
+      "shape": "array",
+      "$note": "A bare ARRAY of `{ day, count }` buckets \u2014 the service returns the grouped rows as they come back, with no envelope."
+    },
+    {
+      "ns": "reports",
+      "name": "labels",
+      "http": "GET",
+      "path": "/v1/reports/labels",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "overview",
+      "http": "GET",
+      "path": "/v1/reports/overview",
+      "shape": "object",
+      "$note": "An OBJECT (`{ windowDays, openConversations, messagesSent, csat }`), unlike its two array-returning neighbours above."
+    },
+    {
+      "ns": "reports",
+      "name": "response_times",
+      "http": "GET",
+      "path": "/v1/reports/response-times",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "sla",
+      "http": "GET",
+      "path": "/v1/reports/sla",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "sources",
+      "http": "GET",
+      "path": "/v1/reports/sources",
+      "shape": "array"
+    },
+    {
+      "ns": "reports",
+      "name": "teams",
+      "http": "GET",
+      "path": "/v1/reports/teams",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "theme_conversations",
+      "http": "GET",
+      "path": "/v1/reports/themes/{id}/conversations",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "themes",
+      "http": "GET",
+      "path": "/v1/reports/themes",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "voice",
+      "http": "GET",
+      "path": "/v1/reports/voice",
+      "shape": "object"
+    },
+    {
+      "ns": "root",
+      "name": "me",
+      "http": "GET",
+      "path": "/v1/me",
+      "shape": "object"
+    },
+    {
+      "ns": "root",
+      "name": "whoami",
+      "http": "GET",
+      "path": "/v1/api-keys/whoami",
+      "shape": "object"
     },
     {
       "ns": "search",
@@ -303,20 +975,128 @@
       "$note": "The single-page form returns the whole envelope, not just `items`: the response carries `facets` and a `tier` beside them, and a paginator that yields only hits throws those away."
     },
     {
-      "ns": "events",
-      "name": "track",
+      "ns": "tickets",
+      "name": "bulk",
       "http": "POST",
-      "path": "/v1/cdp/events",
+      "path": "/v1/tickets/bulk",
       "shape": "object",
       "write": true
     },
     {
-      "ns": "events",
+      "ns": "tickets",
+      "name": "comments",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/comments",
+      "shape": "array"
+    },
+    {
+      "ns": "tickets",
+      "name": "conversations",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/conversations",
+      "shape": "array"
+    },
+    {
+      "ns": "tickets",
+      "name": "for_conversation",
+      "http": "GET",
+      "path": "/v1/tickets/for-conversation/{conversation_id}",
+      "shape": "array"
+    },
+    {
+      "ns": "tickets",
+      "name": "lineage",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/lineage",
+      "shape": "object"
+    },
+    {
+      "ns": "tickets",
       "name": "list",
       "http": "GET",
-      "path": "/v1/cdp/events",
+      "path": "/v1/tickets",
       "shape": "page",
       "paged": true
+    },
+    {
+      "ns": "tickets",
+      "name": "merge",
+      "http": "POST",
+      "path": "/v1/tickets/{id}/merge",
+      "shape": "object",
+      "write": true
+    },
+    {
+      "ns": "tickets",
+      "name": "open_count",
+      "http": "GET",
+      "path": "/v1/tickets/open-count/{conversationId}",
+      "shape": "object"
+    },
+    {
+      "ns": "tickets",
+      "name": "queues",
+      "http": "GET",
+      "path": "/v1/tickets/queues",
+      "shape": "array"
+    },
+    {
+      "ns": "tickets",
+      "name": "split",
+      "http": "POST",
+      "path": "/v1/tickets/{id}/split",
+      "shape": "object",
+      "write": true
+    },
+    {
+      "ns": "tickets",
+      "name": "status_history",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/status-history",
+      "shape": "object"
+    },
+    {
+      "ns": "tickets",
+      "name": "time",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/time",
+      "shape": "object"
+    },
+    {
+      "ns": "triggers",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/triggers",
+      "shape": "object"
+    },
+    {
+      "ns": "triggers",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/triggers/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "triggers",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/triggers",
+      "shape": "page",
+      "paged": true
+    },
+    {
+      "ns": "webhooks",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/webhooks",
+      "shape": "object"
+    },
+    {
+      "ns": "webhooks",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/webhooks/{id}",
+      "shape": "object"
     },
     {
       "ns": "webhooks",
@@ -335,6 +1115,20 @@
     },
     {
       "ns": "webhooks",
+      "name": "events",
+      "http": "GET",
+      "path": "/v1/webhooks/events",
+      "shape": "object"
+    },
+    {
+      "ns": "webhooks",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/webhooks",
+      "shape": "array"
+    },
+    {
+      "ns": "webhooks",
       "name": "redeliver",
       "http": "POST",
       "path": "/v1/webhooks/deliveries/{id}/redeliver",
@@ -342,78 +1136,25 @@
       "write": true
     },
     {
-      "ns": "reports",
-      "name": "overview",
+      "ns": "webhooks",
+      "name": "schema_versions",
       "http": "GET",
-      "path": "/v1/reports/overview",
-      "shape": "object",
-      "$note": "An OBJECT (`{ windowDays, openConversations, messagesSent, csat }`), unlike its two array-returning neighbours above."
-    },
-    {
-      "ns": "reports",
-      "name": "agents",
-      "http": "GET",
-      "path": "/v1/reports/agents",
-      "shape": "array",
-      "$note": "A bare ARRAY of per-agent rows (`Promise<AgentReportRow[]>`), not a rollup object. Three of the four report routes look alike and two of them are arrays."
-    },
-    {
-      "ns": "reports",
-      "name": "conversations_by_day",
-      "http": "GET",
-      "path": "/v1/reports/conversations-by-day",
-      "shape": "array",
-      "$note": "A bare ARRAY of `{ day, count }` buckets — the service returns the grouped rows as they come back, with no envelope."
-    },
-    {
-      "ns": "reports",
-      "name": "sla",
-      "http": "GET",
-      "path": "/v1/reports/sla",
+      "path": "/v1/webhooks/schema-versions",
       "shape": "object"
     },
     {
-      "ns": "channels",
-      "name": "list",
-      "http": "GET",
-      "path": "/v1/channels",
-      "shape": "array"
-    },
-    {
-      "ns": "channels",
-      "name": "get",
-      "http": "GET",
-      "path": "/v1/channels/{id}",
-      "shape": "object"
-    },
-    {
-      "ns": "billing",
-      "name": "plans",
-      "http": "GET",
-      "path": "/v1/billing/plans",
-      "shape": "array"
-    },
-    {
-      "ns": "billing",
-      "name": "usage",
-      "http": "GET",
-      "path": "/v1/billing/usage",
-      "shape": "object",
-      "$requires": "eventType — the handler validates it against a closed list and throws before doing anything else, so a call with no query is a 400. Four SDKs shipped it as an optional argument."
-    },
-    {
-      "ns": "workspace",
-      "name": "settings",
-      "http": "GET",
-      "path": "/v1/workspace/settings",
+      "ns": "webhooks",
+      "name": "set_schema_version",
+      "http": "PATCH",
+      "path": "/v1/webhooks/{id}/schema-version",
       "shape": "object"
     },
     {
       "ns": "workspace",
-      "name": "labels",
+      "name": "agent_skills",
       "http": "GET",
-      "path": "/v1/labels",
-      "shape": "array"
+      "path": "/v1/agents/skills",
+      "shape": "object"
     },
     {
       "ns": "workspace",
@@ -424,17 +1165,45 @@
     },
     {
       "ns": "workspace",
-      "name": "team_members",
+      "name": "key_scopes",
       "http": "GET",
-      "path": "/v1/teams/{id}/members",
+      "path": "/v1/api-keys/scopes",
       "shape": "array"
     },
     {
       "ns": "workspace",
-      "name": "agent_skills",
+      "name": "labels",
       "http": "GET",
-      "path": "/v1/agents/skills",
+      "path": "/v1/labels",
+      "shape": "array"
+    },
+    {
+      "ns": "workspace",
+      "name": "mine",
+      "http": "GET",
+      "path": "/v1/workspaces/me",
+      "shape": "array"
+    },
+    {
+      "ns": "workspace",
+      "name": "secrets",
+      "http": "GET",
+      "path": "/v1/workspace/secrets",
       "shape": "object"
+    },
+    {
+      "ns": "workspace",
+      "name": "settings",
+      "http": "GET",
+      "path": "/v1/workspace/settings",
+      "shape": "object"
+    },
+    {
+      "ns": "workspace",
+      "name": "team_members",
+      "http": "GET",
+      "path": "/v1/teams/{id}/members",
+      "shape": "array"
     }
   ],
   "helpers": [

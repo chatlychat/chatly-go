@@ -424,6 +424,33 @@ func TestBareArrayRoutesDecodeAsSlices(t *testing.T) {
 	}
 }
 
+// One route's bare array holds STRINGS, and it needs its own decoder.
+//
+// GET /v1/channels/adapters is `z.array(z.string())`. Built on the usual
+// []Object helper it would fail on every real call — and the surface suite's
+// shared `[{"id":"x_1"}]` fixture would have agreed with that mistake, which
+// is why the fixture for it is overridden there. This is the positive half:
+// the real body decodes, in order, with no envelope.
+func TestAdaptersDecodeAsStrings(t *testing.T) {
+	c, _ := newTestClient(t, jsonHandler(200, `["api","email","web"]`))
+	adapters, err := c.Channels.Adapters(context.Background())
+	if err != nil {
+		t.Fatalf("Channels.Adapters: %v", err)
+	}
+	if len(adapters) != 3 || adapters[0] != "api" || adapters[2] != "web" {
+		t.Fatalf("adapters = %v", adapters)
+	}
+
+	// And the negative half: a body of objects is a decode error rather than
+	// three empty strings, so a route that changed shape cannot pass as an
+	// empty-ish success.
+	objs, _ := newTestClient(t, jsonHandler(200, `[{"name":"web"}]`))
+	if _, err := objs.Channels.Adapters(context.Background()); err == nil {
+		t.Fatal("Channels.Adapters accepted an array of objects: the decode is lenient, so a " +
+			"route that gained an envelope would hand callers blank strings instead of an error")
+	}
+}
+
 // Client-side guards: refuse a call that cannot possibly succeed instead of
 // spending a round trip to be told so.
 func TestClientSideArgumentGuards(t *testing.T) {
@@ -452,6 +479,58 @@ func TestClientSideArgumentGuards(t *testing.T) {
 		"Events.TrackNoName":      first(c.Events.Track(ctx, TrackEventInput{ContactID: "ct_1"})),
 		"Billing.Usage":           first(c.Billing.Usage(ctx, "", nil)),
 		"Webhooks.Redeliver":      first(c.Webhooks.Redeliver(ctx, "")),
+
+		// The surface added on 2026-10-14. Each of these refuses something
+		// the API refuses too, so the guard is a faster 400 rather than a
+		// second opinion about the schema.
+		"AI.AddProviderNoKey":   first(c.AI.AddProvider(ctx, AIProviderOpenAI, "")),
+		"AI.TestProviderNoName": first(c.AI.TestProvider(ctx, "")),
+		"AI.SetToneBadRule":     first(c.AI.SetTone(ctx, []ToneRuleInput{{Category: ToneCategoryWarmth}})),
+		"AI.GenerateTone":       first(c.AI.GenerateTone(ctx, "")),
+		"AI.CreateToolNoURL":    first(c.AI.CreateTool(ctx, AIToolInput{Name: "x", Description: "y"})),
+		// A Chatly bot needs a prompt and an external one needs a URL, and
+		// the union is tried external-arm-first, so sending the wrong arm's
+		// fields is a 200 that changed nothing rather than a refusal.
+		"Bots.CreateNoPrompt":      first(c.Bots.Create(ctx, BotInput{Name: "x"})),
+		"Bots.CreateExternalNoURL": first(c.Bots.Create(ctx, BotInput{Type: BotTypeExternal, Name: "x"})),
+		"Bots.DeliveryNoDelivery":  first(c.Bots.Delivery(ctx, "bt_1", "")),
+		"BotRoutes.CreateNoBot":    first(c.BotRoutes.Create(ctx, BotRouteInput{Name: "x"})),
+		"Brands.CreateNoSlug":      first(c.Brands.Create(ctx, BrandInput{Name: "x"})),
+		"CanvasSteps.ResolveEmpty": first(c.CanvasSteps.Resolve(ctx, "cs_1", nil)),
+		"Channels.CreateNoPublic":  first(c.Channels.Create(ctx, ChannelInput{Type: ChannelTypeWeb, Name: "x"})),
+		"CustomerCards.NoTTL": first(c.CustomerCards.Create(ctx, CustomerCardInput{
+			Key: "k", Title: "t", URL: "https://x.test",
+		})),
+		"CardEndpoints.CreateNoURL": first(c.CustomerCardEndpoints.Create(ctx, "")),
+		"DocsSources.CreateNoSpace": first(c.DocsSources.Create(ctx, DocsSourceInput{
+			Provider: DocsProviderGitBook, OrganizationID: "org_1",
+		})),
+		"EmailTemplates.UpdateEmptyBody": first(c.EmailTemplates.Update(ctx, EmailTemplateWorkspaceInvite, "s", "")),
+		"EmailTemplates.PreviewNoKind":   first(c.EmailTemplates.Preview(ctx, "", "s", "b")),
+		"KnowledgeGaps.UpdateNoStatus":   first(c.KnowledgeGaps.Update(ctx, "kg_1", "")),
+		// `enabled` and at least one action are REQUIRED KEYS on the trigger
+		// upsert — there is no server-side default for either.
+		"Triggers.CreateNoEnabled": first(c.Triggers.Create(ctx, TriggerInput{
+			Name: "x", EventType: "conversation.created",
+			Actions: []TriggerAction{{Type: "send_message"}},
+		})),
+		"Triggers.CreateNoActions": first(c.Triggers.Create(ctx, TriggerInput{
+			Name: "x", EventType: "conversation.created", Enabled: Bool(true),
+		})),
+		"Webhooks.CreateNoEvents":   first(c.Webhooks.Create(ctx, WebhookEndpointInput{URL: "https://x.test"})),
+		"Webhooks.SetSchemaNoValue": first(c.Webhooks.SetSchemaVersion(ctx, "wh_1", "")),
+		// An empty id on a DELETE would address the collection, not a row —
+		// which on this route would be a 404 rather than a mass deletion, but
+		// refusing locally is still the right answer.
+		"Webhooks.DeleteNoID": first(c.Webhooks.Delete(ctx, "")),
+		"Conversations.OutcomeNoRef": first(c.Conversations.RecordOutcome(ctx, "cv_1", ConversationOutcomeInput{
+			Outcome: OutcomePurchased,
+		})),
+		"Conversations.BlocksEmpty":  first(c.Conversations.UpdateBlocks(ctx, "cv_1", "ms_1", nil)),
+		"Conversations.ReturnNoBot":  first(c.Conversations.ReturnToBot(ctx, "cv_1", "")),
+		"Billing.UsageDailyNoEvent":  first(c.Billing.UsageDaily(ctx, "", nil)),
+		"Reports.ThemesBadDate":      first(c.Reports.Themes(ctx, &ThemeOptions{Date: "yesterday"})),
+		"Reports.ThemeConversations": first(c.Reports.ThemeConversations(ctx, "")),
 	}
 	for name, err := range cases {
 		if err == nil {

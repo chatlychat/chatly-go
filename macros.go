@@ -141,3 +141,78 @@ func (s *MacrosService) Delete(ctx context.Context, macroID string) error {
 	}
 	return s.c.RequestInto(ctx, "DELETE", "/v1/macros/"+pathEscape(macroID), nil, nil, nil)
 }
+
+// Get returns one macro by id.
+//
+// GET /v1/macros/{id} — scope macros:read. The id is parsed as a UUID inside
+// the handler, so a v4 id or a slug is a 400 here rather than a 404.
+//
+// One thing the list does not do: THERE IS NO VISIBILITY CLAUSE on this
+// route. The query filters on id and workspace only, so a `personal`-scope
+// macro belonging to another agent IS readable by id even though List would
+// never show it to that caller. Treat a macro id as workspace-wide
+// information.
+//
+// `shortCode` is nullable and is stored without the leading slash — the write
+// paths strip it.
+func (s *MacrosService) Get(ctx context.Context, macroID string) (Object, error) {
+	if macroID == "" {
+		return nil, errors.New("chatly: Macros.Get: empty macro id")
+	}
+	return s.c.getObject(ctx, "/v1/macros/"+pathEscape(macroID), nil)
+}
+
+// Actions returns the catalogue of actions a macro may reference.
+//
+// GET /v1/macros/actions — scope macros:read. An OBJECT, `{ limit, actions }`,
+// not the bare array the route name suggests: reaching for [0] on this
+// response gets nothing.
+//
+// The ceiling travels with the vocabulary on purpose. `limit` is the maximum
+// number of actions ONE macro may carry (16 today, typed as a number) and a
+// caller needs it to validate a macro before posting it; `actions` is about a
+// dozen entries of `{ key, label, description, permission }`.
+//
+// Each action's `permission` is what is needed to RUN it, not to list it — so
+// a key can read actions it may not execute.
+//
+// Worth knowing when you write one: a macro referencing an action the
+// registry no longer has throws 422, not 400, from both Create and Update.
+func (s *MacrosService) Actions(ctx context.Context) (Object, error) {
+	return s.c.getObject(ctx, "/v1/macros/actions", nil)
+}
+
+// Templates returns the starter-template catalogue.
+//
+// GET /v1/macros/templates — scope macros:read. An object, `{ items, total }`,
+// and deliberately NOT a page: there is no nextCursor and no hasMore, so a
+// client that decodes it as a cursor envelope gets an empty walk. `total`
+// equals len(items), because the list is the whole list — a frozen
+// in-process catalogue with no cursor, ever.
+//
+// The handler reads NO query parameters: there is no category, language or
+// tag filter, so narrow it client-side. `category` is one of greeting,
+// acknowledgement, resolution, billing, support, product, lifecycle or
+// compliance.
+//
+// A row is the LITE shape: `bodyPreview` and no `body`, no actions, no short
+// code. Fetch Template for those.
+func (s *MacrosService) Templates(ctx context.Context) (Object, error) {
+	return s.c.getObject(ctx, "/v1/macros/templates", nil)
+}
+
+// Template returns one starter template BY SLUG.
+//
+// GET /v1/macros/templates/{slug} — scope macros:read. The slug is not
+// checked against the catalogue's enum, deliberately, so an unknown one is a
+// 404 rather than a 400.
+//
+// `{ slug, name, body, category, language, tags }` plus `actions` and
+// `shortCode`, which are ABSENT KEYS rather than nulls when the template has
+// neither — most do not. Model them as optional, not nullable.
+func (s *MacrosService) Template(ctx context.Context, slug string) (Object, error) {
+	if slug == "" {
+		return nil, errors.New("chatly: Macros.Template: empty template slug")
+	}
+	return s.c.getObject(ctx, "/v1/macros/templates/"+pathEscape(slug), nil)
+}

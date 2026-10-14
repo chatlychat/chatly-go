@@ -117,3 +117,94 @@ func (s *WorkspaceService) TeamMembers(ctx context.Context, teamID string) ([]Ob
 func (s *WorkspaceService) AgentSkills(ctx context.Context) (Object, error) {
 	return s.c.getObject(ctx, "/v1/agents/skills", nil)
 }
+
+// KeyScopes returns every scope an API key may be granted.
+//
+// GET /v1/api-keys/scopes — scope workspace:read. A bare array of
+// `{ value, group }`, where group is the part of the name before the first
+// colon. Static and workspace-independent — no database read, nothing about
+// which keys exist — so cache it for the process lifetime.
+//
+// It is deliberately NARROWER than the full permission vocabulary: it is
+// exactly the set of permissions with at least one key-accessible route
+// behind them. It used to return all eighty, so a customer could mint a key
+// scoped to something no route honours and be refused on every call. Note the
+// asymmetry that remains: POST /v1/api-keys validates `scopes` as a bare
+// string array, so the create route accepts names that never appear here.
+//
+// This is the SECOND of exactly two routes on the api-keys controller a key
+// may call; Client.Whoami is the other. Managing keys with a key — listing,
+// creating, revoking — stays closed, because that is a privilege-escalation
+// shape, while a static vocabulary of permission names is not.
+func (s *WorkspaceService) KeyScopes(ctx context.Context) ([]Object, error) {
+	return s.c.getObjects(ctx, "/v1/api-keys/scopes", nil)
+}
+
+// Secrets enumerates every credential the workspace holds — existence and
+// timestamps, never a value.
+//
+// GET /v1/workspace/secrets — and it needs BOTH workspace:write AND
+// integrations:read, which the guard ANDs: a key with only one of them gets
+// ErrForbidden. It is the one route on this surface requiring two
+// permissions.
+//
+// `{ items, total, truncated }`, an object and NOT a page: `items` has no
+// nextCursor beside it, so a client that pattern-matches on the key and
+// synthesises a paginator is wrong about this route.
+//
+// A census across nine tables — api keys, channels, customer cards, webhook
+// endpoints, bots, AI tools, inbound webhooks, docs sources and DKIM keys.
+// Each item carries a stable id, its `source` table, a `kind`, the `location`
+// the value sits at (including the dot path inside a JSON column, e.g.
+// channels.config.identityVerification.secret), `owner`, `status`,
+// timestamps, and the concrete `rotateRoute` where one call replaces it. It
+// carries NO value, no prefix of one, no hash and no length — that rule is
+// what makes this route key-accessible at all.
+//
+// Three fields decide whether the rest means anything:
+//
+//   - `truncated: true` means a source hit its 250-row cap AND THE CENSUS IS
+//     INCOMPLETE. There is no cursor and no way to fetch the remainder, so
+//     read it before concluding a credential does not exist.
+//   - `rotatedAtBasis` and `lastUsedBasis` qualify the null timestamps.
+//     "none" means NOTHING IN THE PRODUCT RECORDS THAT FACT — true of eight
+//     of the nine sources for rotation — while "column" or "derived" means it
+//     was looked up and the credential really has not been rotated or used.
+//     Treating the first as "never used" is how a webhook secret that signs a
+//     delivery every minute gets revoked.
+//   - `rotateRoute: null` does not mean "cannot rotate"; it means rotation
+//     takes more than one call (an API key is create-then-delete) or that
+//     there is no rotate route at all, as for webhook endpoints.
+//
+// Two more distinctions worth keeping: `headerNames: null` is NOT the same as
+// `[]` — null means the encrypted header bag could not be decrypted, so the
+// credential is present and unusable, which is the state that needs action.
+// And `status: "inactive"` still holds live credential material.
+func (s *WorkspaceService) Secrets(ctx context.Context) (Object, error) {
+	return s.c.getObject(ctx, "/v1/workspace/secrets", nil)
+}
+
+// Mine lists the workspaces this credential can reach.
+//
+// GET /v1/workspaces/me — a BARE ARRAY of
+// `{ id, name, slug, plan, role, createdAt }`, where `role` is the CALLER's
+// role in that workspace rather than a property of the workspace.
+//
+// For a `ck_` key the array holds EXACTLY ONE entry: the workspace the key
+// was minted in. That makes it the cheap way to confirm which tenant a key
+// actually points at — a question worth answering before a script writes
+// anything. It needs no permission at all, like Client.Me.
+//
+// `role` for a key is the SYNTHETIC "restricted" the auth layer mints for
+// every key, not a stored membership role. That is the honest value: what a
+// key may do is its scope set, which Client.Me answers, and reporting
+// "owner" here because the person who created the key was one would overstate
+// the credential.
+//
+// It also answers on a SUSPENDED workspace, where most of /v1/* does not,
+// because this is how a caller discovers the others — for a user, the
+// healthy workspace one click away; for a key, confirmation that the tenant
+// it points at is the suspended one.
+func (s *WorkspaceService) Mine(ctx context.Context) ([]Object, error) {
+	return s.c.getObjects(ctx, "/v1/workspaces/me", nil)
+}

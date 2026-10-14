@@ -26,6 +26,9 @@ func sdkPagers() map[string]func(*Client) *Pager[Object] {
 		"events.list":         func(c *Client) *Pager[Object] { return c.Events.ListAll(nil) },
 		"webhooks.deliveries": func(c *Client) *Pager[Object] { return c.Webhooks.DeliveriesAll(nil) },
 		"search.query":        func(c *Client) *Pager[Object] { return c.Search.QueryAll("q", nil) },
+		"bots.list":           func(c *Client) *Pager[Object] { return c.Bots.ListAll(nil) },
+		"bots.deliveries":     func(c *Client) *Pager[Object] { return c.Bots.DeliveriesAll("bt_1", nil) },
+		"triggers.list":       func(c *Client) *Pager[Object] { return c.Triggers.ListAll(nil) },
 	}
 }
 
@@ -97,10 +100,19 @@ func TestPagedEntriesHavePagers(t *testing.T) {
 	//	10 contacts.journey, conversations.unattended and search.query went
 	//	   IN — all three answer {items, nextCursor} and were simply never
 	//	   flagged; found by reading the handlers, not by trusting the file
+	//	13 bots.list, bots.deliveries and triggers.list came with the rest
+	//	   of the surface on 2026-10-14; all three answer
+	//	   {items, nextCursor, hasMore} from buildPaginatedResponse
 	//
 	// Every move was handler evidence in one direction or the other. If this
 	// has to move again, say which route and why, in the commit.
-	const pagedFloor = 10
+	//
+	// One route reads like a fourteenth and is not: billing.invoices IS
+	// cursor-paginated, but its envelope is {data, nextCursor}, so the
+	// generic walker — which reads `items` — cannot be pointed at it and
+	// would report an empty page forever. It is declared `object` and has no
+	// pager on purpose; follow its cursor by hand.
+	const pagedFloor = 13
 	if len(paged) < pagedFloor {
 		t.Fatalf("manifest flags %d paged entries, floor is %d: either a route legitimately became "+
 			"pagination-exempt (say which, and lower the floor deliberately) or the manifest is no "+
@@ -224,8 +236,8 @@ func TestEveryAutoPaginatorRejectsABareArrayWhereAPageIsExpected(t *testing.T) {
 			declared[tc.name] = true
 		}
 	}
-	if len(declared) != 10 {
-		t.Fatalf("%d routes are declared `page`, expected 10", len(declared))
+	if len(declared) != 13 {
+		t.Fatalf("%d routes are declared `page`, expected 13", len(declared))
 	}
 	for key := range declared {
 		if _, ok := pagers[key]; !ok {

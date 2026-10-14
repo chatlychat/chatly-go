@@ -3,6 +3,64 @@
 All notable changes to the Chatly Go SDK are recorded here. This project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **The whole key-accessible surface: 107 new methods, 162 in total** — the
+  manifest and the set of routes carrying `@AllowApiKey()` are now the same
+  162, with no gap in either direction, so `Request` is for what the API adds
+  next rather than for a known omission.
+- `Client.Me` (`GET /v1/me`), `Workspace.Mine` (`GET /v1/workspaces/me`) and
+  `Webhooks.Delete` (`DELETE /v1/webhooks/{id}`): three routes this SDK
+  reported as key-accessible but absent from the manifest, listed later the
+  same day. `Me` needs no permission and answers on a suspended workspace,
+  which makes it the liveness check `Whoami` (`workspace:read`) cannot be;
+  its body is discriminated on `principal`, hence an `Object` rather than a
+  struct. `Mine` holds exactly one entry for a key — the tenant it points at.
+  `Webhooks.Delete` closes an asymmetry where a key could register a delivery
+  target and never remove one.
+- **104 of those methods, 159 in total, in the first pass.** Eleven
+  new namespaces — `AI`, `Bots`, `BotRoutes`, `Brands`, `CanvasSteps`,
+  `CustomerCards`, `CustomerCardEndpoints`, `DocsSources`, `EmailTemplates`,
+  `KnowledgeGaps`, `Triggers` — plus additions to `Contacts` (`Cards`,
+  `Mood`), `Conversations` (`Linked`, `UnreadCounts`, `UpdateBlocks`,
+  `ReturnToBot`, `Outcomes`, `RecordOutcome`), `Tickets` (`Conversations`,
+  `OpenCount`, `Time`, `StatusHistory`, `Lineage`), `Macros` (`Get`,
+  `Actions`, `Templates`, `Template`), `Webhooks` (`List`, `Create`,
+  `Events`, `SchemaVersions`, `SetSchemaVersion`), `Reports` (nine),
+  `Channels` (`Adapters`, `Create`, `Update`, `RotateSecret`), `Billing`
+  (`Summary`, `Invoices`, `UsageDaily`, `UsageMonthly`) and `Workspace`
+  (`KeyScopes`, `Secrets`).
+- Three new auto-paginators, for the three `page` routes that came with it:
+  `Bots.ListAll`, `Bots.DeliveriesAll`, `Triggers.ListAll`. The manifest's
+  `paged` count is 13 now, and `billing.invoices` is deliberately NOT one of
+  them: it is cursor-paginated but spells its envelope `{data, nextCursor}`,
+  so the generic walker — which reads `items` — cannot be pointed at it and
+  would report an empty page forever.
+- `Client.getStrings` behind `Channels.Adapters`, the one route on the
+  surface whose bare array holds strings rather than objects
+  (`z.array(z.string())`). A method built on the usual decoder would have
+  failed on every real call, while the shared `[{"id":"x_1"}]` fixture
+  happily agreed with it — hence `nonObjectArrayFixtures` in the suite, which
+  overrides that one body and is itself asserted to still be an array.
+- `chatly.Bool` and `chatly.Float64`, for the input fields whose SERVER-SIDE
+  DEFAULT IS TRUE or whose zero value is meaningful. A plain `bool` with
+  `omitempty` could not tell "leave it alone" from "turn it off" and would
+  silently enable the thing you were disabling.
+
+### Changed
+
+- The surface lock is 162 rows; the suite's floor moved 55 → 159 → 162 and the
+  declared shape distribution 14/10/30/1 → 32/13/113/1 → 33 array / 13 page /
+  115 object / 1 empty, each row read from its handler's `@ZodResponse`. Both are
+  anti-vacuity figures: a column of 162 `object`s would satisfy every other
+  assertion here.
+- The 162-row table moved out of `surface_test.go` into
+  `surfacecases_test.go` (the conversational surface) and
+  `surfacecases_config_test.go` (the configuration surface), because one file
+  of it was well past this repo's 650-line ceiling.
+
 ## [0.1.0] — 2026-10-12
 
 First release.

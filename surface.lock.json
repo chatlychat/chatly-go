@@ -3,6 +3,97 @@
   "generatedBy": "surface_test.go",
   "entries": [
     {
+      "ns": "ai",
+      "name": "add_provider",
+      "http": "POST",
+      "path": "/v1/ai-providers",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "create_tool",
+      "http": "POST",
+      "path": "/v1/ai/tools",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "delete_tool",
+      "http": "DELETE",
+      "path": "/v1/ai/tools/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "generate_tone",
+      "http": "POST",
+      "path": "/v1/ai/tone/generate",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "providers",
+      "http": "GET",
+      "path": "/v1/ai-providers",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "quota",
+      "http": "GET",
+      "path": "/v1/ai/quota",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "set_tone",
+      "http": "PUT",
+      "path": "/v1/ai/tone",
+      "shape": "array"
+    },
+    {
+      "ns": "ai",
+      "name": "test_provider",
+      "http": "POST",
+      "path": "/v1/ai-providers/{provider}/test",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "tone",
+      "http": "GET",
+      "path": "/v1/ai/tone",
+      "shape": "array"
+    },
+    {
+      "ns": "ai",
+      "name": "tone_preview",
+      "http": "GET",
+      "path": "/v1/ai/tone/preview",
+      "shape": "object"
+    },
+    {
+      "ns": "ai",
+      "name": "tools",
+      "http": "GET",
+      "path": "/v1/ai/tools",
+      "shape": "array"
+    },
+    {
+      "ns": "ai",
+      "name": "update_tool",
+      "http": "PATCH",
+      "path": "/v1/ai/tools/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "billing",
+      "name": "invoices",
+      "http": "GET",
+      "path": "/v1/billing/invoices",
+      "shape": "object"
+    },
+    {
       "ns": "billing",
       "name": "plans",
       "http": "GET",
@@ -11,9 +102,205 @@
     },
     {
       "ns": "billing",
+      "name": "summary",
+      "http": "GET",
+      "path": "/v1/billing",
+      "shape": "object"
+    },
+    {
+      "ns": "billing",
       "name": "usage",
       "http": "GET",
       "path": "/v1/billing/usage",
+      "shape": "object"
+    },
+    {
+      "ns": "billing",
+      "name": "usage_daily",
+      "http": "GET",
+      "path": "/v1/billing/usage/daily",
+      "shape": "object"
+    },
+    {
+      "ns": "billing",
+      "name": "usage_monthly",
+      "http": "GET",
+      "path": "/v1/billing/usage/monthly",
+      "shape": "object"
+    },
+    {
+      "ns": "bot_routes",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/bot-routes",
+      "shape": "object"
+    },
+    {
+      "ns": "bot_routes",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/bot-routes/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "bot_routes",
+      "name": "fields",
+      "http": "GET",
+      "path": "/v1/bot-routes/fields",
+      "shape": "object"
+    },
+    {
+      "ns": "bot_routes",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/bot-routes",
+      "shape": "array"
+    },
+    {
+      "ns": "bot_routes",
+      "name": "resolve",
+      "http": "POST",
+      "path": "/v1/bot-routes/resolve",
+      "shape": "object"
+    },
+    {
+      "ns": "bot_routes",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/bot-routes/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "analytics",
+      "http": "GET",
+      "path": "/v1/bots/{id}/analytics",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/bots",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "deliveries",
+      "http": "GET",
+      "path": "/v1/bots/{id}/deliveries",
+      "shape": "page"
+    },
+    {
+      "ns": "bots",
+      "name": "delivery",
+      "http": "GET",
+      "path": "/v1/bots/{id}/deliveries/{deliveryId}",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/bots/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/bots",
+      "shape": "page"
+    },
+    {
+      "ns": "bots",
+      "name": "redeliver",
+      "http": "POST",
+      "path": "/v1/bots/{id}/deliveries/{deliveryId}/redeliver",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "rotate_external_secret",
+      "http": "POST",
+      "path": "/v1/bots/{id}/external/rotate-secret",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "test_delivery",
+      "http": "POST",
+      "path": "/v1/bots/{id}/test-delivery",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/bots/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "bots",
+      "name": "update_external",
+      "http": "PATCH",
+      "path": "/v1/bots/{id}/external",
+      "shape": "object"
+    },
+    {
+      "ns": "brands",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/brands",
+      "shape": "object"
+    },
+    {
+      "ns": "brands",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/brands/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "brands",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/brands",
+      "shape": "array"
+    },
+    {
+      "ns": "brands",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/brands/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "canvas_steps",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/canvas-steps/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "canvas_steps",
+      "name": "resolve",
+      "http": "POST",
+      "path": "/v1/canvas-steps/{id}/resolve",
+      "shape": "object"
+    },
+    {
+      "ns": "channels",
+      "name": "adapters",
+      "http": "GET",
+      "path": "/v1/channels/adapters",
+      "shape": "array"
+    },
+    {
+      "ns": "channels",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/channels",
       "shape": "object"
     },
     {
@@ -31,6 +318,20 @@
       "shape": "array"
     },
     {
+      "ns": "channels",
+      "name": "rotate_secret",
+      "http": "POST",
+      "path": "/v1/channels/{id}/secret/rotate",
+      "shape": "object"
+    },
+    {
+      "ns": "channels",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/channels/{id}",
+      "shape": "object"
+    },
+    {
       "ns": "contacts",
       "name": "add_tags",
       "http": "POST",
@@ -42,6 +343,13 @@
       "name": "bulk_upsert",
       "http": "POST",
       "path": "/v1/contacts/bulk",
+      "shape": "object"
+    },
+    {
+      "ns": "contacts",
+      "name": "cards",
+      "http": "POST",
+      "path": "/v1/contacts/{contactId}/cards",
       "shape": "object"
     },
     {
@@ -70,6 +378,13 @@
       "name": "merge",
       "http": "POST",
       "path": "/v1/contacts/{id}/merge",
+      "shape": "object"
+    },
+    {
+      "ns": "contacts",
+      "name": "mood",
+      "http": "GET",
+      "path": "/v1/contacts/{id}/mood",
       "shape": "object"
     },
     {
@@ -130,6 +445,13 @@
     },
     {
       "ns": "conversations",
+      "name": "linked",
+      "http": "GET",
+      "path": "/v1/conversations/{id}/linked",
+      "shape": "object"
+    },
+    {
+      "ns": "conversations",
       "name": "list",
       "http": "GET",
       "path": "/v1/conversations",
@@ -141,6 +463,27 @@
       "http": "GET",
       "path": "/v1/conversations/{id}/messages",
       "shape": "page"
+    },
+    {
+      "ns": "conversations",
+      "name": "outcomes",
+      "http": "GET",
+      "path": "/v1/conversations/{id}/outcomes",
+      "shape": "object"
+    },
+    {
+      "ns": "conversations",
+      "name": "record_outcome",
+      "http": "POST",
+      "path": "/v1/conversations/{id}/outcomes",
+      "shape": "object"
+    },
+    {
+      "ns": "conversations",
+      "name": "return_to_bot",
+      "http": "POST",
+      "path": "/v1/conversations/{id}/return-to-bot",
+      "shape": "object"
     },
     {
       "ns": "conversations",
@@ -178,6 +521,174 @@
       "shape": "page"
     },
     {
+      "ns": "conversations",
+      "name": "unread_counts",
+      "http": "GET",
+      "path": "/v1/conversations/unread-counts",
+      "shape": "object"
+    },
+    {
+      "ns": "conversations",
+      "name": "update_blocks",
+      "http": "PATCH",
+      "path": "/v1/conversations/{id}/messages/{messageId}/blocks",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_card_endpoints",
+      "name": "activate_secret",
+      "http": "POST",
+      "path": "/v1/customer-card-endpoints/{id}/activate-secret",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_card_endpoints",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/customer-card-endpoints",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_card_endpoints",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/customer-card-endpoints/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_card_endpoints",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/customer-card-endpoints",
+      "shape": "array"
+    },
+    {
+      "ns": "customer_card_endpoints",
+      "name": "rotate_secret",
+      "http": "POST",
+      "path": "/v1/customer-card-endpoints/{id}/rotate-secret",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_cards",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/customer-cards",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_cards",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/customer-cards/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_cards",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/customer-cards",
+      "shape": "array"
+    },
+    {
+      "ns": "customer_cards",
+      "name": "rotate_secret",
+      "http": "POST",
+      "path": "/v1/customer-cards/{id}/rotate-secret",
+      "shape": "object"
+    },
+    {
+      "ns": "customer_cards",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/customer-cards/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/docs-sources",
+      "shape": "object"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/docs-sources/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "discover",
+      "http": "POST",
+      "path": "/v1/docs-sources/discover",
+      "shape": "array"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/docs-sources",
+      "shape": "array"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "providers",
+      "http": "GET",
+      "path": "/v1/docs-sources/providers",
+      "shape": "array"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "sync",
+      "http": "POST",
+      "path": "/v1/docs-sources/{id}/sync",
+      "shape": "object"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/docs-sources/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "docs_sources",
+      "name": "webhook",
+      "http": "POST",
+      "path": "/v1/docs-sources/{id}/webhook",
+      "shape": "object"
+    },
+    {
+      "ns": "email_templates",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/email-templates/{kind}",
+      "shape": "object"
+    },
+    {
+      "ns": "email_templates",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/email-templates",
+      "shape": "array"
+    },
+    {
+      "ns": "email_templates",
+      "name": "preview",
+      "http": "POST",
+      "path": "/v1/email-templates/preview",
+      "shape": "object"
+    },
+    {
+      "ns": "email_templates",
+      "name": "update",
+      "http": "PUT",
+      "path": "/v1/email-templates/{kind}",
+      "shape": "object"
+    },
+    {
       "ns": "events",
       "name": "list",
       "http": "GET",
@@ -213,6 +724,34 @@
       "shape": "array"
     },
     {
+      "ns": "knowledge_gaps",
+      "name": "draft",
+      "http": "POST",
+      "path": "/v1/knowledge-gaps/{id}/draft",
+      "shape": "object"
+    },
+    {
+      "ns": "knowledge_gaps",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/knowledge-gaps",
+      "shape": "array"
+    },
+    {
+      "ns": "knowledge_gaps",
+      "name": "update",
+      "http": "PATCH",
+      "path": "/v1/knowledge-gaps/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "macros",
+      "name": "actions",
+      "http": "GET",
+      "path": "/v1/macros/actions",
+      "shape": "object"
+    },
+    {
       "ns": "macros",
       "name": "create",
       "http": "POST",
@@ -228,10 +767,31 @@
     },
     {
       "ns": "macros",
+      "name": "get",
+      "http": "GET",
+      "path": "/v1/macros/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "macros",
       "name": "list",
       "http": "GET",
       "path": "/v1/macros",
       "shape": "array"
+    },
+    {
+      "ns": "macros",
+      "name": "template",
+      "http": "GET",
+      "path": "/v1/macros/templates/{slug}",
+      "shape": "object"
+    },
+    {
+      "ns": "macros",
+      "name": "templates",
+      "http": "GET",
+      "path": "/v1/macros/templates",
+      "shape": "object"
     },
     {
       "ns": "macros",
@@ -249,10 +809,31 @@
     },
     {
       "ns": "reports",
+      "name": "attribution",
+      "http": "GET",
+      "path": "/v1/reports/attribution",
+      "shape": "array"
+    },
+    {
+      "ns": "reports",
+      "name": "cohorts",
+      "http": "GET",
+      "path": "/v1/reports/cohorts",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
       "name": "conversations_by_day",
       "http": "GET",
       "path": "/v1/reports/conversations-by-day",
       "shape": "array"
+    },
+    {
+      "ns": "reports",
+      "name": "labels",
+      "http": "GET",
+      "path": "/v1/reports/labels",
+      "shape": "object"
     },
     {
       "ns": "reports",
@@ -263,9 +844,58 @@
     },
     {
       "ns": "reports",
+      "name": "response_times",
+      "http": "GET",
+      "path": "/v1/reports/response-times",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
       "name": "sla",
       "http": "GET",
       "path": "/v1/reports/sla",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "sources",
+      "http": "GET",
+      "path": "/v1/reports/sources",
+      "shape": "array"
+    },
+    {
+      "ns": "reports",
+      "name": "teams",
+      "http": "GET",
+      "path": "/v1/reports/teams",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "theme_conversations",
+      "http": "GET",
+      "path": "/v1/reports/themes/{id}/conversations",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "themes",
+      "http": "GET",
+      "path": "/v1/reports/themes",
+      "shape": "object"
+    },
+    {
+      "ns": "reports",
+      "name": "voice",
+      "http": "GET",
+      "path": "/v1/reports/voice",
+      "shape": "object"
+    },
+    {
+      "ns": "root",
+      "name": "me",
+      "http": "GET",
+      "path": "/v1/me",
       "shape": "object"
     },
     {
@@ -298,10 +928,24 @@
     },
     {
       "ns": "tickets",
+      "name": "conversations",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/conversations",
+      "shape": "array"
+    },
+    {
+      "ns": "tickets",
       "name": "for_conversation",
       "http": "GET",
       "path": "/v1/tickets/for-conversation/{conversation_id}",
       "shape": "array"
+    },
+    {
+      "ns": "tickets",
+      "name": "lineage",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/lineage",
+      "shape": "object"
     },
     {
       "ns": "tickets",
@@ -319,6 +963,13 @@
     },
     {
       "ns": "tickets",
+      "name": "open_count",
+      "http": "GET",
+      "path": "/v1/tickets/open-count/{conversationId}",
+      "shape": "object"
+    },
+    {
+      "ns": "tickets",
       "name": "queues",
       "http": "GET",
       "path": "/v1/tickets/queues",
@@ -329,6 +980,55 @@
       "name": "split",
       "http": "POST",
       "path": "/v1/tickets/{id}/split",
+      "shape": "object"
+    },
+    {
+      "ns": "tickets",
+      "name": "status_history",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/status-history",
+      "shape": "object"
+    },
+    {
+      "ns": "tickets",
+      "name": "time",
+      "http": "GET",
+      "path": "/v1/tickets/{id}/time",
+      "shape": "object"
+    },
+    {
+      "ns": "triggers",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/triggers",
+      "shape": "object"
+    },
+    {
+      "ns": "triggers",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/triggers/{id}",
+      "shape": "object"
+    },
+    {
+      "ns": "triggers",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/triggers",
+      "shape": "page"
+    },
+    {
+      "ns": "webhooks",
+      "name": "create",
+      "http": "POST",
+      "path": "/v1/webhooks",
+      "shape": "object"
+    },
+    {
+      "ns": "webhooks",
+      "name": "delete",
+      "http": "DELETE",
+      "path": "/v1/webhooks/{id}",
       "shape": "object"
     },
     {
@@ -347,9 +1047,37 @@
     },
     {
       "ns": "webhooks",
+      "name": "events",
+      "http": "GET",
+      "path": "/v1/webhooks/events",
+      "shape": "object"
+    },
+    {
+      "ns": "webhooks",
+      "name": "list",
+      "http": "GET",
+      "path": "/v1/webhooks",
+      "shape": "array"
+    },
+    {
+      "ns": "webhooks",
       "name": "redeliver",
       "http": "POST",
       "path": "/v1/webhooks/deliveries/{id}/redeliver",
+      "shape": "object"
+    },
+    {
+      "ns": "webhooks",
+      "name": "schema_versions",
+      "http": "GET",
+      "path": "/v1/webhooks/schema-versions",
+      "shape": "object"
+    },
+    {
+      "ns": "webhooks",
+      "name": "set_schema_version",
+      "http": "PATCH",
+      "path": "/v1/webhooks/{id}/schema-version",
       "shape": "object"
     },
     {
@@ -368,10 +1096,31 @@
     },
     {
       "ns": "workspace",
+      "name": "key_scopes",
+      "http": "GET",
+      "path": "/v1/api-keys/scopes",
+      "shape": "array"
+    },
+    {
+      "ns": "workspace",
       "name": "labels",
       "http": "GET",
       "path": "/v1/labels",
       "shape": "array"
+    },
+    {
+      "ns": "workspace",
+      "name": "mine",
+      "http": "GET",
+      "path": "/v1/workspaces/me",
+      "shape": "array"
+    },
+    {
+      "ns": "workspace",
+      "name": "secrets",
+      "http": "GET",
+      "path": "/v1/workspace/secrets",
+      "shape": "object"
     },
     {
       "ns": "workspace",

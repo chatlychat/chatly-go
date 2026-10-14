@@ -5,8 +5,9 @@ package chatly
 // and emitting surface.lock.json, plus the two halves of the response-shape
 // check: the fixture a declared shape becomes on the wire (responseForShape)
 // and the reader that names the shape a decoded value really has
-// (actualShape). Split out of surface_test.go, which is the 55-route table
-// and the declarations on it.
+// (actualShape). Split out of surface_test.go, which holds the shape
+// vocabulary and the assertions; the 162-row table itself lives in
+// surfacecases_test.go and surfacecases_config_test.go.
 
 import (
 	"bytes"
@@ -128,6 +129,15 @@ func actualShape(value any) string {
 		}
 		return string(shapePage)
 	case []Object:
+		if v == nil {
+			return string(shapeEmpty)
+		}
+		return string(shapeArray)
+	case []string:
+		// One route answers a bare array of STRINGS
+		// (GET /v1/channels/adapters, `z.array(z.string())`). It is still
+		// the `array` shape; what differs is the fixture, not the
+		// declaration — see nonObjectArrayFixtures.
 		if v == nil {
 			return string(shapeEmpty)
 		}
@@ -276,7 +286,7 @@ func assertCoversManifest(t *testing.T, recorded []lockEntry, manifest map[strin
 // method that called no such route. Three SDKs passed it the same way.
 //
 // A path in a comment is not evidence. An HTTP request arriving at a server
-// is. This test already makes all 55 of those requests, so it is the right
+// is. This test already makes all 162 of those requests, so it is the right
 // place to record what was observed — and the gate reads the recording rather
 // than guessing from source.
 //
@@ -449,6 +459,27 @@ func fixtureIsPage(t *testing.T, body string) bool {
 	_, hasItems := fields["items"]
 	_, hasCursor := fields["nextCursor"]
 	return hasItems && hasCursor
+}
+
+// fixtureShape names the shape a fixture BODY has, in the same four-word
+// vocabulary — the counterpart of actualShape, which reads a decoded value.
+//
+// It exists for the one route whose fixture is overridden
+// (nonObjectArrayFixtures): an override has to be proved to be of the shape
+// it replaces, or the override becomes a hole in the declaration.
+func fixtureShape(t *testing.T, body string) shape {
+	t.Helper()
+	if body == "" {
+		return shapeEmpty
+	}
+	if fixtureIsPage(t, body) {
+		return shapePage
+	}
+	var arr []json.RawMessage
+	if json.Unmarshal([]byte(body), &arr) == nil {
+		return shapeArray
+	}
+	return shapeObject
 }
 
 // The fixtures everything else trusts, checked against the vocabulary they

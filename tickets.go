@@ -186,3 +186,119 @@ func (s *TicketsService) Bulk(ctx context.Context, ids []string, action TicketBu
 	body := map[string]any{"ids": ids, "action": string(action), "payload": payload}
 	return s.c.writeObject(ctx, "POST", "/v1/tickets/bulk", nil, body)
 }
+
+// Conversations returns the conversations a ticket covers.
+//
+// GET /v1/tickets/{id}/conversations — scope conversations:read. A BARE
+// ARRAY of `{ conversationId, isOrigin, subject, status, channelType }`,
+// origin first.
+//
+// The last three are NULLABLE: the join is a LEFT one, so a link whose
+// conversation was hard-deleted still yields a row with only an id on it.
+//
+// An unknown ticket is an EMPTY ARRAY, not a 404, and a restricted agent gets
+// a silently shorter list rather than a 403 — the inbox ceiling is applied in
+// the query. The id is not validated server-side, so a malformed one is a
+// 500.
+func (s *TicketsService) Conversations(ctx context.Context, ticketID string) ([]Object, error) {
+	if ticketID == "" {
+		return nil, errors.New("chatly: Tickets.Conversations: empty ticket id")
+	}
+	return s.c.getObjects(ctx, "/v1/tickets/"+pathEscape(ticketID)+"/conversations", nil)
+}
+
+// OpenCount returns how many open tickets a CONVERSATION has.
+//
+// GET /v1/tickets/open-count/{conversationId} — scope conversations:read.
+// `{ openTickets }`.
+//
+// The path parameter is a CONVERSATION id, not a ticket id and not a queue
+// id, which the route's shape invites you to assume.
+//
+// "Open" here means status NOT IN (resolved, closed), so pending, on_hold and
+// even merged all count. And because it counts through the link table, a
+// tracker ticket covering fifty threads counts on every one of them.
+//
+// A conversation the credential may not open is a 404 rather than a 403 or a
+// zero.
+func (s *TicketsService) OpenCount(ctx context.Context, conversationID string) (Object, error) {
+	if conversationID == "" {
+		return nil, errors.New("chatly: Tickets.OpenCount: empty conversation id")
+	}
+	path := "/v1/tickets/open-count/" + pathEscape(conversationID)
+	return s.c.getObject(ctx, path, nil)
+}
+
+// Time returns the time logged against a ticket.
+//
+// GET /v1/tickets/{id}/time — scope conversations:read.
+// `{ items, totalMinutes, billableMinutes }` — another `items` with no
+// cursor, so an object rather than a page. Entries are newest first.
+//
+// `billableMinutes` is the sum of the entries flagged billable and
+// `totalMinutes` the sum of all of them, so billableMinutes <= totalMinutes
+// always. Both are computed server-side precisely so a caller does not
+// re-derive the figure that reaches an invoice.
+//
+// There is no existence check behind this: a well-formed unknown ticket id
+// answers 200 with an empty list and both totals zero, not a 404.
+func (s *TicketsService) Time(ctx context.Context, ticketID string) (Object, error) {
+	if ticketID == "" {
+		return nil, errors.New("chatly: Tickets.Time: empty ticket id")
+	}
+	return s.c.getObject(ctx, "/v1/tickets/"+pathEscape(ticketID)+"/time", nil)
+}
+
+// StatusHistory returns a ticket's status transitions, oldest first.
+//
+// GET /v1/tickets/{id}/status-history — scope conversations:read. An OBJECT,
+// not an array: `{ ticketId, status, currentStatusForSeconds, items,
+// truncated }`.
+//
+// The three siblings of `items` are not derivable from the rows, which is why
+// they are there. `status` comes from the TICKET rather than from the last
+// transition, so the two can legitimately disagree;
+// `currentStatusForSeconds` is measured from the last RECORDED transition and
+// is null when there are none; and `truncated` is the only signal that older
+// rows exist — the list holds the 500 newest transitions and there is no
+// cursor, so beyond that the rest are simply not fetchable.
+//
+// Per item, `timeInPreviousStatusSeconds` is computed rather than stored and
+// is null on the first row returned. `changeSource` is manual, workflow, api,
+// sla_breach or customer_reply, and the two `changedBy` fields are null for
+// every system transition.
+//
+// Both history routes assert visibility on EVERY conversation the ticket
+// covers, so one restricted thread 404s the whole response.
+func (s *TicketsService) StatusHistory(ctx context.Context, ticketID string) (Object, error) {
+	if ticketID == "" {
+		return nil, errors.New("chatly: Tickets.StatusHistory: empty ticket id")
+	}
+	path := "/v1/tickets/" + pathEscape(ticketID) + "/status-history"
+	return s.c.getObject(ctx, path, nil)
+}
+
+// Lineage returns a ticket's splits and follow-ups, in both directions.
+//
+// GET /v1/tickets/{id}/lineage — scope conversations:read.
+// `{ splitFromTicketId, parentTicketId, splitFrom, splitInto,
+// splitIntoTruncated, followUpOf, followUps, followUpsTruncated }`, where a
+// ref is `{ id, number, title, status }`.
+//
+// The raw ids sit alongside the resolved refs on purpose: a NON-NULL
+// splitFromTicketId with a NULL splitFrom is a DANGLING POINTER, which
+// neither column has a foreign key to prevent. Reading only the refs hides
+// that.
+//
+// Each child list holds 25 rows, newest first — ticket ids are v4, so
+// ordering by id would be ordering by nothing — and the *Truncated flags say
+// when more exist.
+//
+// An unknown ticket is a 404 here, deliberately, rather than an empty
+// lineage.
+func (s *TicketsService) Lineage(ctx context.Context, ticketID string) (Object, error) {
+	if ticketID == "" {
+		return nil, errors.New("chatly: Tickets.Lineage: empty ticket id")
+	}
+	return s.c.getObject(ctx, "/v1/tickets/"+pathEscape(ticketID)+"/lineage", nil)
+}

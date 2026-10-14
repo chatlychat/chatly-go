@@ -25,4 +25,15 @@ func attachServices(c *Client) {
 	c.Channels = &ChannelsService{c: c}
 	c.Billing = &BillingService{c: c}
 	c.Workspace = &WorkspaceService{c: c}
+	c.AI = &AIService{c: c}
+	c.Bots = &BotsService{c: c}
+	c.BotRoutes = &BotRoutesService{c: c}
+	c.Brands = &BrandsService{c: c}
+	c.CanvasSteps = &CanvasStepsService{c: c}
+	c.CustomerCards = &CustomerCardsService{c: c}
+	c.CustomerCardEndpoints = &CustomerCardEndpointsService{c: c}
+	c.DocsSources = &DocsSourcesService{c: c}
+	c.EmailTemplates = &EmailTemplatesService{c: c}
+	c.KnowledgeGaps = &KnowledgeGapsService{c: c}
+	c.Triggers = &TriggersService{c: c}
 }

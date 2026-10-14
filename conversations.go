@@ -473,3 +473,67 @@ func (s *ConversationsService) CancelScheduled(ctx context.Context, scheduledID 
 	path := "/v1/conversations/scheduled-messages/" + pathEscape(scheduledID)
 	return s.c.writeObject(ctx, "DELETE", path, nil, nil)
 }
+
+// Linked returns the conversations merged into or out of this thread.
+//
+// GET /v1/conversations/{id}/linked — scope conversations:read. An OBJECT
+// carrying `{ items }` and NO cursor: any "has items, therefore a page"
+// heuristic types this wrong, and a paginator over it either walks forever or
+// stops at one page. Take the object and read items yourself.
+//
+// Each item is `{ id, subject, status, relation, mergedAt }` where relation is
+// merged_into or merged_from. Two warnings about those last two fields.
+// "Link as duplicate" writes the SAME column a merge does, so a merely linked
+// pair also reports relation "merged_into" — this route cannot tell a link
+// from a merge. And `mergedAt` is really the linked thread's closedAt, so an
+// open duplicate reports null rather than the moment it was linked.
+//
+// A missing thread is a 404; a linked thread the caller may not see is
+// silently dropped from items rather than refused. The id is not validated
+// server-side, so a malformed one is a 500.
+func (s *ConversationsService) Linked(ctx context.Context, conversationID string) (Object, error) {
+	if conversationID == "" {
+		return nil, errors.New("chatly: Conversations.Linked: empty conversation id")
+	}
+	return s.c.getObject(ctx, "/v1/conversations/"+pathEscape(conversationID)+"/linked", nil)
+}
+
+// UnreadCountsOptions is the one parameter the badge route takes.
+type UnreadCountsOptions struct {
+	// Brand is a brand UUID, and it goes on the wire as `brand` — NOT
+	// `brandId`. The handler reads a raw query parameter with no schema, so
+	// `brandId` is neither read nor rejected: you would get unscoped counts
+	// with a 200. An empty value is a harmless no-op, and a non-UUID is a
+	// 500 rather than a 400.
+	Brand string
+}
+
+func (o *UnreadCountsOptions) values() url.Values {
+	q := url.Values{}
+	if o != nil {
+		setIf(q, "brand", o.Brand)
+	}
+	return q
+}
+
+// UnreadCounts returns the inbox badge numbers.
+//
+// GET /v1/conversations/unread-counts — scope conversations:read. An object
+// carrying four scalars plus three bucket arrays:
+// `{ unread, mentions, participating, unattended, byInbox, byTeam, byLabel }`.
+// Not a page and not an array, despite the arrays inside it.
+//
+// `mentions`, `participating` and `unattended` are SUBSETS of `unread`, so
+// summing them double-counts. `byLabel` is capped at the 50 busiest labels
+// and internal labels (names beginning `__`) are stripped. Only open
+// conversations are counted.
+//
+// THIS IS AN AGENT-ORIENTED ENDPOINT, and that matters to a key. "Unread" is
+// per user, measured against the caller's own read state, and an API key is
+// not a person: a key has no read-state rows and no mentions, so it sees
+// `mentions: 0`, `participating: 0`, and `unread` equal to every open thread
+// with a contact message. Useful as a workspace backlog figure; not useful as
+// somebody's badge.
+func (s *ConversationsService) UnreadCounts(ctx context.Context, opts *UnreadCountsOptions) (Object, error) {
+	return s.c.getObject(ctx, "/v1/conversations/unread-counts", opts.values())
+}

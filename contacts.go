@@ -257,3 +257,90 @@ func (s *ContactsService) Journey(ctx context.Context, contactID string, opts *J
 func (s *ContactsService) JourneyAll(contactID string, opts *JourneyOptions) *Pager[Object] {
 	return listPager[Object](s.c, "/v1/contacts/"+pathEscape(contactID)+"/journey", opts.values())
 }
+
+// Cards runs the operator's customer cards for one contact.
+//
+// POST /v1/contacts/{contactId}/cards — scope contacts:read, answers 201 with
+// `{ cards: [...] }`. The collection key is `cards`, not `items`.
+//
+// A POST THAT IS A READ, and not a create — the create is
+// CustomerCards.Create. POST because the response is per contact and per
+// conversation, is cacheable by nobody, and a GET would put a conversation id
+// in an access log beside the contact's email.
+//
+// It is a LIVE OUTBOUND FETCH to your own backend: Chatly signs a request to
+// each enabled card's URL, batching cards that share a URL and headers, with
+// a 15-second timeout per card. Expect multi-second latency, and set this
+// client's timeout accordingly.
+//
+// Each card comes back as `{ key, title, state, blocks, text }` where state is
+// ok, empty, missing, invalid or error. `blocks: null` is a real value
+// meaning "no data for this contact" rather than a failure, and `text` is the
+// plain-text rendition for a surface that cannot render blocks.
+//
+// It NEVER answers 404: a workspace with no cards gets `{ cards: [] }` before
+// the contact is even looked up, and so does an unknown or deleted contact.
+//
+// The optional conversationID is FORWARDED to your endpoint — as
+// `conversation.id`, with `reference` always null — but it is not authorised
+// against the contact, and it is NOT part of Chatly's per-card cache key. A
+// result fetched with no conversation can therefore be replayed to a request
+// that has one.
+//
+// The path parameter is spelled `contactId` rather than `id`, the only
+// contacts route like that, and it is not validated: a malformed id is a 500
+// on a workspace that has cards.
+func (s *ContactsService) Cards(ctx context.Context, contactID, conversationID string) (Object, error) {
+	if contactID == "" {
+		return nil, errors.New("chatly: Contacts.Cards: empty contact id")
+	}
+	// The body is strict and still REQUIRED: an absent body is a 400, so an
+	// empty object goes up when there is no conversation to name.
+	body := map[string]any{}
+	if conversationID != "" {
+		body["conversationId"] = conversationID
+	}
+	return s.c.writeObject(ctx, "POST", "/v1/contacts/"+pathEscape(contactID)+"/cards", nil, body)
+}
+
+// MoodOptions is the one parameter the mood route takes.
+type MoodOptions struct {
+	// Days is 7..365, defaulting to 90, and REJECTED out of range rather
+	// than clamped.
+	//
+	// Note the FLOOR OF 7, where the sibling Journey route's Days floor is 1.
+	// The two are not interchangeable and a shared validator would be wrong
+	// about one of them.
+	Days int
+}
+
+func (o *MoodOptions) values() url.Values {
+	q := url.Values{}
+	if o != nil && o.Days > 0 {
+		q.Set("days", strconv.Itoa(o.Days))
+	}
+	return q
+}
+
+// Mood returns weekly sentiment buckets for one contact.
+//
+// GET /v1/contacts/{id}/mood — scope contacts:read.
+// `{ contactId, days, sampleCount, buckets }`, where each bucket is
+// `{ weekStart, averageScore, count }` snapped to UTC Monday and sorted
+// oldest first.
+//
+// READ `sampleCount`, NOT len(buckets). Fewer than three scored messages
+// suppresses the series entirely, so an empty `buckets` with a low
+// sampleCount is "not enough signal", which is a success and not an empty
+// result for "no data".
+//
+// `days` is echoed back so a chart can label itself — it is the window asked
+// for, not a count of anything. The scores come from the cached
+// per-message sentiment rather than from the messages, so a workspace that
+// has sentiment analysis turned off reports no samples.
+func (s *ContactsService) Mood(ctx context.Context, contactID string, opts *MoodOptions) (Object, error) {
+	if contactID == "" {
+		return nil, errors.New("chatly: Contacts.Mood: empty contact id")
+	}
+	return s.c.getObject(ctx, "/v1/contacts/"+pathEscape(contactID)+"/mood", opts.values())
+}

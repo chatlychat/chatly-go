@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"testing"
-	"time"
 )
 
 // shape is the TOP-LEVEL shape of a route's successful response body.
@@ -31,6 +30,49 @@ const (
 // anything that is not one of these four.
 var allShapes = []shape{shapeArray, shapePage, shapeObject, shapeEmpty}
 
+// nonObjectArrayFixtures overrides the `array` fixture for a route whose
+// array does NOT hold objects, with the body the real route sends.
+//
+// One entry, and the mechanism is deliberately this narrow. GET
+// /v1/channels/adapters is `z.array(z.string())` — `["email","web"]` — which
+// cannot decode into []Object at all, so the shared one-element fixture
+// `[{"id":"x_1"}]` would fail a method that is correct and pass one built on
+// the wrong decoder. The override is still asserted to BE an array, both at
+// the point of use and in TestNonObjectArrayFixturesAreStillArrays, so this
+// widens the fixture set by one body rather than excusing a route from
+// declaring a shape.
+//
+// Absolve by name, never by prefix: an entry here must name a case that
+// exists and declares `array`.
+var nonObjectArrayFixtures = map[string]string{
+	"channels.adapters": `["email","web"]`,
+}
+
+// An override must name a real `array` case and must itself be a bare array.
+//
+// Without this, an entry could sit here naming a route that has since changed
+// shape — or carrying a page envelope, which would quietly put this suite
+// back to agreeing with itself on the one route the mechanism exists for.
+func TestNonObjectArrayFixturesAreStillArrays(t *testing.T) {
+	declared := make(map[string]shape)
+	for _, tc := range surfaceCases() {
+		declared[tc.name] = tc.shape
+	}
+	for name, body := range nonObjectArrayFixtures {
+		s, ok := declared[name]
+		if !ok {
+			t.Errorf("nonObjectArrayFixtures overrides %s, which is not a case in this table", name)
+			continue
+		}
+		if s != shapeArray {
+			t.Errorf("nonObjectArrayFixtures overrides %s, which this SDK declares %s, not array", name, s)
+		}
+		if got := fixtureShape(t, body); got != shapeArray {
+			t.Errorf("the override for %s is %s, which parses as %s rather than a bare array", name, body, got)
+		}
+	}
+}
+
 // surfaceCase is one row of the table: a method, the verb and path it is
 // supposed to request, the response shape its decoder expects, and the call.
 type surfaceCase struct {
@@ -39,247 +81,6 @@ type surfaceCase struct {
 	path   string
 	shape  shape
 	call   func(context.Context, *Client) (any, error)
-}
-
-// surfaceCases is every hand-written method in this package, paired with the
-// VERB, PATH and RESPONSE SHAPE it is supposed to deal in.
-//
-// Why this table exists: a typo in a path is invisible to a type checker, to
-// go vet, and to every other test here, and it surfaces as a 404 in someone
-// else's integration. The paths below are copied from the SDK surface
-// contract (packages/sdk-spec/surface.json), so this is a comparison against
-// the spec rather than against the implementation's own idea of itself.
-//
-// ─── The `shape` column is HAND-WRITTEN, and must stay that way ───────────
-//
-// It is read from the handlers, NOT from surface.json — even though this
-// suite loads that manifest for the verb and path templates. A fixture
-// derived from the manifest agrees with whatever the manifest says,
-// including when the manifest is wrong, and that is not hypothetical:
-// `macros.list` was flagged `paged: true` for a day while its handler is
-// @PaginationExempt and answers a bare 200-row array. The .NET and Rust
-// clients built paginators over it and raised a decode error on every real
-// call with green suites, because their fake transports answered EVERY
-// route with `{items, nextCursor}`. One of them was worse than an error:
-// the Rust client's derived Page deserializer read the bare array as an
-// EMPTY PAGE and returned it with a 200 — a wrong answer rather than a
-// missing one.
-//
-// So this column is a second opinion. The suite feeds each method the shape
-// declared HERE (see responseForShape), asserts the value handed back really
-// has that shape (actualShape), and writes the declaration into
-// surface.lock.json; scripts/check-sdk-surface-parity.mjs then diffs eight
-// independently written columns against the manifest. A wrong manifest row
-// needs eight authors to misread the same handler.
-//
-// Three rows look wrong and are not. `contacts.remove_tag` is a DELETE that
-// answers with the surviving contact, and `conversations.cancel_scheduled` a
-// DELETE that answers with the row it just cancelled — so two of the three
-// deletes here have bodies, and `macros.delete` is the only real 204 on the
-// surface. Two of the four report routes are bare arrays.
-//
-// Two rows are `page` while their single-page method returns an Object
-// rather than a *Page: conversations.unattended and search.query answer the
-// page envelope PLUS fields a *Page would discard (`total`; `tier` and
-// `facets`), so those methods hand back the whole object and the pager walks
-// the cursor. The response shape is still `page`, which is what this column
-// records — it describes the WIRE, not the Go return type.
-//
-// This table also EMITS surface.lock.json — see writeSurfaceLock for why the
-// cross-language parity gate reads that file instead of reading this source.
-func surfaceCases() []surfaceCase {
-	return []surfaceCase{
-		// root
-		{"root.whoami", "GET", "/v1/api-keys/whoami", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Whoami(ctx)
-		}},
-
-		// contacts
-		{"contacts.list", "GET", "/v1/contacts", shapePage, func(ctx context.Context, c *Client) (any, error) {
-			return c.Contacts.List(ctx, nil)
-		}},
-		{"contacts.get", "GET", "/v1/contacts/ct_1", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Contacts.Get(ctx, "ct_1")
-		}},
-		{"contacts.upsert", "POST", "/v1/contacts", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Contacts.Upsert(ctx, ContactInput{Email: "a@b.test"})
-		}},
-		{"contacts.bulk_upsert", "POST", "/v1/contacts/bulk", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Contacts.BulkUpsert(ctx, []ContactInput{{Email: "a@b.test"}})
-		}},
-		{"contacts.merge", "POST", "/v1/contacts/ct_1/merge", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Contacts.Merge(ctx, "ct_1", "ct_2")
-		}},
-		{"contacts.add_tags", "POST", "/v1/contacts/ct_1/tags", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Contacts.AddTags(ctx, "ct_1", "vip")
-		}},
-		{"contacts.remove_tag", "DELETE", "/v1/contacts/ct_1/tags/vip", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Contacts.RemoveTag(ctx, "ct_1", "vip")
-		}},
-		{"contacts.unsubscribe", "POST", "/v1/contacts/ct_1/unsubscribe", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Contacts.Unsubscribe(ctx, "ct_1", UnsubscribeInput{Unsubscribed: true})
-		}},
-		{"contacts.journey", "GET", "/v1/contacts/ct_1/journey", shapePage, func(ctx context.Context, c *Client) (any, error) {
-			return c.Contacts.Journey(ctx, "ct_1", nil)
-		}},
-
-		// conversations
-		{"conversations.list", "GET", "/v1/conversations", shapePage, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.List(ctx, nil)
-		}},
-		{"conversations.get", "GET", "/v1/conversations/cv_1", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.Get(ctx, "cv_1")
-		}},
-		{"conversations.messages", "GET", "/v1/conversations/cv_1/messages", shapePage, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.Messages(ctx, "cv_1", nil)
-		}},
-		{"conversations.send", "POST", "/v1/conversations/cv_1/messages", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.Send(ctx, "cv_1", SendMessageInput{Body: "hi"})
-		}},
-		{"conversations.unattended", "GET", "/v1/conversations/unattended", shapePage, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.Unattended(ctx, nil)
-		}},
-		{"conversations.agent_handling", "GET", "/v1/conversations/cv_1/agent-handling", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.AgentHandling(ctx, "cv_1")
-		}},
-		{"conversations.set_agent_handling", "PUT", "/v1/conversations/cv_1/agent-handling", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.SetAgentHandling(ctx, "cv_1", SetAgentHandlingInput{State: "handled"})
-		}},
-		{"conversations.generated_replies", "GET", "/v1/conversations/cv_1/generated-replies", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.GeneratedReplies(ctx, "cv_1")
-		}},
-		{"conversations.generate_reply", "POST", "/v1/conversations/cv_1/generated-replies", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.GenerateReply(ctx, "cv_1", GenerateReplyInput{Body: "draft"})
-		}},
-		{"conversations.scheduled_messages", "GET", "/v1/conversations/cv_1/scheduled-messages", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.ScheduledMessages(ctx, "cv_1")
-		}},
-		{"conversations.schedule_message", "POST", "/v1/conversations/cv_1/scheduled-messages", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.ScheduleMessage(ctx, "cv_1", ScheduleMessageInput{Body: "later", SendAt: time.Now().Add(time.Hour)})
-		}},
-		{"conversations.cancel_scheduled", "DELETE", "/v1/conversations/scheduled-messages/sm_1", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Conversations.CancelScheduled(ctx, "sm_1")
-		}},
-
-		// tickets
-		{"tickets.list", "GET", "/v1/tickets", shapePage, func(ctx context.Context, c *Client) (any, error) {
-			return c.Tickets.List(ctx, nil)
-		}},
-		{"tickets.comments", "GET", "/v1/tickets/tk_1/comments", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Tickets.Comments(ctx, "tk_1")
-		}},
-		{"tickets.for_conversation", "GET", "/v1/tickets/for-conversation/cv_1", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Tickets.ForConversation(ctx, "cv_1")
-		}},
-		{"tickets.queues", "GET", "/v1/tickets/queues", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Tickets.Queues(ctx)
-		}},
-		{"tickets.merge", "POST", "/v1/tickets/tk_1/merge", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Tickets.Merge(ctx, "tk_1", "tk_2")
-		}},
-		{"tickets.split", "POST", "/v1/tickets/tk_1/split", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Tickets.Split(ctx, "tk_1", TicketSplitInput{Title: "Follow-up"})
-		}},
-		{"tickets.bulk", "POST", "/v1/tickets/bulk", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Tickets.Bulk(ctx, []string{"tk_1"}, TicketBulkStatus, TicketBulkPayload{Status: "open"})
-		}},
-
-		// macros
-		{"macros.list", "GET", "/v1/macros", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Macros.List(ctx, nil)
-		}},
-		{"macros.create", "POST", "/v1/macros", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Macros.Create(ctx, MacroInput{Name: "Refund", Scope: "workspace", Body: "text"})
-		}},
-		{"macros.update", "PATCH", "/v1/macros/mc_1", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Macros.Update(ctx, "mc_1", MacroInput{Name: "Refund v2"})
-		}},
-		{"macros.delete", "DELETE", "/v1/macros/mc_1", shapeEmpty, func(ctx context.Context, c *Client) (any, error) {
-			return nil, c.Macros.Delete(ctx, "mc_1")
-		}},
-
-		// kb
-		{"kb.articles", "GET", "/v1/kb/articles", shapePage, func(ctx context.Context, c *Client) (any, error) {
-			return c.KB.Articles(ctx, nil)
-		}},
-		{"kb.article", "GET", "/v1/kb/articles/reset-password", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.KB.Article(ctx, "reset-password")
-		}},
-		{"kb.collections", "GET", "/v1/kb/collections", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.KB.Collections(ctx)
-		}},
-
-		// search
-		{"search.query", "GET", "/v1/search", shapePage, func(ctx context.Context, c *Client) (any, error) {
-			return c.Search.Query(ctx, "refund", nil)
-		}},
-
-		// events
-		{"events.track", "POST", "/v1/cdp/events", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Events.Track(ctx, TrackEventInput{ContactID: "ct_1", Name: "order_placed"})
-		}},
-		{"events.list", "GET", "/v1/cdp/events", shapePage, func(ctx context.Context, c *Client) (any, error) {
-			return c.Events.List(ctx, nil)
-		}},
-
-		// webhooks
-		{"webhooks.deliveries", "GET", "/v1/webhooks/deliveries", shapePage, func(ctx context.Context, c *Client) (any, error) {
-			return c.Webhooks.Deliveries(ctx, nil)
-		}},
-		{"webhooks.delivery", "GET", "/v1/webhooks/deliveries/wd_1", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Webhooks.Delivery(ctx, "wd_1")
-		}},
-		{"webhooks.redeliver", "POST", "/v1/webhooks/deliveries/wd_1/redeliver", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Webhooks.Redeliver(ctx, "wd_1")
-		}},
-
-		// reports
-		{"reports.overview", "GET", "/v1/reports/overview", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Reports.Overview(ctx, nil)
-		}},
-		{"reports.agents", "GET", "/v1/reports/agents", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Reports.Agents(ctx, nil)
-		}},
-		{"reports.conversations_by_day", "GET", "/v1/reports/conversations-by-day", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Reports.ConversationsByDay(ctx, nil)
-		}},
-		{"reports.sla", "GET", "/v1/reports/sla", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Reports.SLA(ctx, nil)
-		}},
-
-		// channels
-		{"channels.list", "GET", "/v1/channels", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Channels.List(ctx)
-		}},
-		{"channels.get", "GET", "/v1/channels/ch_1", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Channels.Get(ctx, "ch_1")
-		}},
-
-		// billing
-		{"billing.plans", "GET", "/v1/billing/plans", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Billing.Plans(ctx)
-		}},
-		{"billing.usage", "GET", "/v1/billing/usage", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Billing.Usage(ctx, UsageEventConversationOpened, nil)
-		}},
-
-		// workspace
-		{"workspace.settings", "GET", "/v1/workspace/settings", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Workspace.Settings(ctx)
-		}},
-		{"workspace.labels", "GET", "/v1/labels", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Workspace.Labels(ctx, nil)
-		}},
-		{"workspace.inboxes", "GET", "/v1/inboxes", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Workspace.Inboxes(ctx)
-		}},
-		{"workspace.team_members", "GET", "/v1/teams/tm_1/members", shapeArray, func(ctx context.Context, c *Client) (any, error) {
-			return c.Workspace.TeamMembers(ctx, "tm_1")
-		}},
-		{"workspace.agent_skills", "GET", "/v1/agents/skills", shapeObject, func(ctx context.Context, c *Client) (any, error) {
-			return c.Workspace.AgentSkills(ctx)
-		}},
-	}
 }
 
 // Every method is driven against a recording server, asserting the VERB, the
@@ -292,8 +93,24 @@ func TestEveryMethodHitsItsDocumentedRoute(t *testing.T) {
 	// here — but with a floor, because a manifest that fails to parse down to
 	// three entries must fail loudly rather than quietly auditing three
 	// methods and printing a pass.
-	if len(manifest) < 55 {
-		t.Fatalf("manifest has %d entries; it had 55 when this SDK was written, so something truncated it", len(manifest))
+	// The floor's history, so a change to it is never mistakable for a parse
+	// failure being papered over:
+	//
+	//	55   the manifest's size when this SDK was written
+	//	159  most of the key-accessible surface, implemented 2026-10-14
+	//	162  ALL of it, later the same day: webhooks.delete, root.me and
+	//	     workspace.mine were listed after this SDK reported them
+	//	     key-accessible but absent from the manifest
+	//
+	// 162 routes carry @AllowApiKey() in apps/api and the manifest lists 162,
+	// with no gap in either direction — so a route appearing here that this
+	// package does not implement is now a NEW route rather than a known
+	// omission. If this number has to move DOWN, say which route left the
+	// surface and why, in the commit.
+	if len(manifest) < 162 {
+		t.Fatalf("manifest has %d entries; it had 162 when this SDK covered the whole surface, "+
+			"so either a route was deliberately removed (lower the floor, and say which) or the "+
+			"manifest is no longer parsing", len(manifest))
 	}
 	if len(cases) != len(manifest) {
 		t.Fatalf("%d methods covered, manifest lists %d", len(cases), len(manifest))
@@ -320,6 +137,18 @@ func TestEveryMethodHitsItsDocumentedRoute(t *testing.T) {
 			// route with a page envelope is how macros.list passed a sibling
 			// SDK's suite and failed on every real call.
 			status, body := responseForShape(t, tc.shape)
+			if override, ok := nonObjectArrayFixtures[tc.name]; ok {
+				// A route whose array does not hold objects. The override is
+				// still of the DECLARED shape — asserted below and again in
+				// TestNonObjectArrayFixturesAreStillArrays — so this widens
+				// the fixture set by one body, it does not excuse a route
+				// from declaring a shape.
+				status, body = http.StatusOK, override
+				if got := fixtureShape(t, override); got != tc.shape {
+					t.Fatalf("%s overrides its fixture with %s, which is a %s and not the declared %s",
+						tc.name, override, got, tc.shape)
+				}
+			}
 
 			var gotMethod, gotPath string
 			var hits int
@@ -416,13 +245,28 @@ func TestEveryMethodHitsItsDocumentedRoute(t *testing.T) {
 // Every route declares a shape, all four shapes appear, and the DISTRIBUTION
 // is the one reading the handlers produced.
 //
-// Anti-vacuity. A column that said `object` 55 times would satisfy every
+// Anti-vacuity. A column that said `object` 162 times would satisfy every
 // other assertion in this package — the fake would answer `{"id":"x_1"}`
 // everywhere, every decoder would cope, and the gate would see unanimity
-// about nothing. The numbers come from reading all 55 @ZodResponse schemas on
-// 2026-10-12: 14 array, 10 page, 30 object, 1 empty. If the surface grows
-// these change, but deliberately and with handler evidence per row — and
-// `empty` stays at exactly one until a second real 204 ships.
+// about nothing. The numbers come from reading every @ZodResponse schema on
+// the surface: 14/10/30/1 over the first 55 routes on 2026-10-12, then
+// 32/13/113/1 over 159 on 2026-10-14, and 33 array / 13 page / 115 object /
+// 1 empty once webhooks.delete (`{ok:true}`), root.me (a discriminated union
+// of objects) and workspace.mine (`z.array(workspaceListItemSchema)`) were
+// listed.
+//
+// If the surface grows these change, but deliberately and with handler
+// evidence per row — and `empty` stays at exactly one until a second real 204
+// ships.
+//
+// Six near misses worth recording, because all six are `object` and look like
+// something else. `billing.invoices` IS cursor-paginated and still not a
+// `page`: it spells its envelope `{data, nextCursor}`, so a walker keyed on
+// `items` would read nothing and report an empty page forever. And five
+// routes answer an `items` key with NO cursor beside it —
+// conversations.linked, conversations.outcomes, macros.templates,
+// tickets.time, tickets.status_history — where "has items, therefore a page"
+// is exactly the heuristic that types them wrong.
 func TestDeclaredShapesCoverTheSurface(t *testing.T) {
 	cases := surfaceCases()
 
@@ -440,7 +284,7 @@ func TestDeclaredShapesCoverTheSurface(t *testing.T) {
 		counts[tc.shape]++
 	}
 
-	want := map[shape]int{shapeArray: 14, shapePage: 10, shapeObject: 30, shapeEmpty: 1}
+	want := map[shape]int{shapeArray: 33, shapePage: 13, shapeObject: 115, shapeEmpty: 1}
 	total := 0
 	for _, s := range allShapes {
 		if counts[s] != want[s] {

@@ -19,13 +19,15 @@
 //
 // # What is and is not here
 //
-// The Chatly API has 886 routes; 141 of them accept an API key, and the rest
+// The Chatly API has 886 routes; 162 of them accept an API key, and the rest
 // answer a `ck_` key with 403 because they need a signed-in person (a
 // reaction records WHO reacted, and a key is not a person). This package
-// hand-writes methods for 55 of the 141 — the ones an integration actually
-// reaches for — and gives you Client.Request for the other 85. A method that
-// always fails is worse than no method, so none of the person-only routes
-// appear here at all.
+// hand-writes a method for ALL 162 — the whole of the shared SDK manifest
+// (packages/sdk-spec/surface.json), which as of 2026-10-14 is exactly the set
+// of routes carrying @AllowApiKey(), with no gap in either direction.
+// Client.Request remains for whatever the API adds after this release. A
+// method that always fails is worse than no method, so none of the
+// person-only routes appear here at all.
 //
 // # Errors
 //
@@ -115,6 +117,18 @@ type Client struct {
 	Channels      *ChannelsService
 	Billing       *BillingService
 	Workspace     *WorkspaceService
+
+	AI                    *AIService
+	Bots                  *BotsService
+	BotRoutes             *BotRoutesService
+	Brands                *BrandsService
+	CanvasSteps           *CanvasStepsService
+	CustomerCards         *CustomerCardsService
+	CustomerCardEndpoints *CustomerCardEndpointsService
+	DocsSources           *DocsSourcesService
+	EmailTemplates        *EmailTemplatesService
+	KnowledgeGaps         *KnowledgeGapsService
+	Triggers              *TriggersService
 }
 
 // Option configures a Client. Options are applied in order and may fail, so
@@ -343,10 +357,41 @@ func (c *Client) Whoami(ctx context.Context) (*WhoAmI, error) {
 	return &out, nil
 }
 
+// Me describes the calling principal — a user, or this API key.
+//
+// GET /v1/me. The response is DISCRIMINATED ON `principal`: a `ck_` key gets
+// `{ principal: "api_key", workspaceId, scopes }`, and there is no user
+// behind a key, so the user-shaped fields are simply absent. That is why this
+// returns an Object rather than a struct: a struct would have to be the union
+// of two bodies, with every field of the one you did not get reading as zero.
+//
+// Two things make it worth calling even though Whoami exists, and both are
+// about when it ANSWERS rather than what it says. The key branch comes from
+// the same function Whoami uses, so the `workspaceId` and `scopes` are
+// identical — the effective scopes, after narrowing, not the ones stored on
+// the key row.
+//
+//   - It carries NO permission requirement at all, where Whoami needs
+//     workspace:read. What a key learns here is its own workspace id and its
+//     own grant list — the two things it presented in order to ask — so a
+//     scope requirement could only withhold a credential's description from
+//     the credential itself. That makes this THE LIVENESS CHECK: a key with
+//     no useful scope still gets a 200, and the answer is true.
+//   - It answers on a SUSPENDED workspace, where most of /v1/* does not.
+//
+// So: Me to find out whether a credential works at all, Whoami when you want
+// the narrower typed struct and already know the key carries workspace:read.
+func (c *Client) Me(ctx context.Context) (Object, error) {
+	return c.getObject(ctx, "/v1/me", nil)
+}
+
 // Request is the escape hatch: any key-accessible route, through the same
 // auth, idempotency, retry and error handling as the typed methods.
 //
-// 86 of the 141 key-accessible routes have no typed method in this package.
+// Every key-accessible route has a typed method in this package as of
+// 2026-10-14, so this is for what the API adds next — and for the things a
+// typed method cannot express, such as an explicit JSON null where an input
+// struct's omitempty can only omit the field.
 // Without this, reaching one means abandoning the SDK and hand-rolling HTTP
 // with a bearer token — and then reimplementing idempotency keys and retries,
 // usually not at all.
@@ -418,6 +463,22 @@ func (c *Client) getObject(ctx context.Context, path string, query url.Values) (
 
 func (c *Client) getObjects(ctx context.Context, path string, query url.Values) ([]Object, error) {
 	var out []Object
+	if err := c.getInto(ctx, path, query, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// getStrings reads a route whose body is a bare array of STRINGS rather than
+// of objects.
+//
+// One route on this surface answers that: GET /v1/channels/adapters is
+// `z.array(z.string())`. It gets its own helper instead of going through
+// getObjects because `["web","email"]` cannot decode into []map[string]any —
+// a method built on the wrong helper there would fail on every real call
+// while a fake transport answering `[{"id":"x"}]` agreed with it.
+func (c *Client) getStrings(ctx context.Context, path string, query url.Values) ([]string, error) {
+	var out []string
 	if err := c.getInto(ctx, path, query, &out); err != nil {
 		return nil, err
 	}
@@ -512,6 +573,18 @@ func (o *ListOptions) values() url.Values {
 	}
 	return q
 }
+
+// Bool returns a pointer to v.
+//
+// It exists for the handful of input fields typed *bool, which are the ones
+// whose SERVER-SIDE DEFAULT IS TRUE — a plain bool could not tell "leave it
+// alone" from "turn it off", and `omitempty` would drop the false and silently
+// enable the thing you were disabling.
+func Bool(v bool) *bool { return &v }
+
+// Float64 returns a pointer to v, for the numeric input fields where zero is
+// a meaningful value rather than "unset".
+func Float64(v float64) *float64 { return &v }
 
 // pathEscape makes a caller-supplied id safe inside a path segment.
 //
