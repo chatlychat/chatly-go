@@ -129,6 +129,7 @@ type Client struct {
 	EmailTemplates        *EmailTemplatesService
 	KnowledgeGaps         *KnowledgeGapsService
 	Triggers              *TriggersService
+	Visitors              *VisitorsService
 }
 
 // Option configures a Client. Options are applied in order and may fail, so

@@ -7,6 +7,13 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Bots.RotateExternalSecret` takes an optional
+  `RotateExternalSecretOptions{ActivateAt time.Time}` (or `ActivateAtRaw`
+  string) and sends `{"activateAt": "..."}`: the old signing secret keeps
+  signing deliveries until that instant, at most 168h ahead. Variadic, so
+  `RotateExternalSecret(ctx, id)` compiles unchanged and still sends no body
+  — the hard cut. The response now carries `activatesAt` (null = the new
+  secret is already signing).
 - **The whole key-accessible surface: 107 new methods, 162 in total** — the
   manifest and the set of routes carrying `@AllowApiKey()` are now the same
   162, with no gap in either direction, so `Request` is for what the API adds

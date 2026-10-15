@@ -253,7 +253,10 @@ func TestEveryMethodHitsItsDocumentedRoute(t *testing.T) {
 // 32/13/113/1 over 159 on 2026-10-14, and 33 array / 13 page / 115 object /
 // 1 empty once webhooks.delete (`{ok:true}`), root.me (a discriminated union
 // of objects) and workspace.mine (`z.array(workspaceListItemSchema)`) were
-// listed.
+// listed. 33/13/116/1 over 163 since visitors.start_conversation opened to
+// API keys on 2026-10-14: `{conversationId}`, taken off the service's
+// declared Promise<{ conversationId: string }> because that handler has no
+// @ZodResponse at all.
 //
 // If the surface grows these change, but deliberately and with handler
 // evidence per row — and `empty` stays at exactly one until a second real 204
@@ -284,7 +287,7 @@ func TestDeclaredShapesCoverTheSurface(t *testing.T) {
 		counts[tc.shape]++
 	}
 
-	want := map[shape]int{shapeArray: 33, shapePage: 13, shapeObject: 115, shapeEmpty: 1}
+	want := map[shape]int{shapeArray: 33, shapePage: 13, shapeObject: 116, shapeEmpty: 1}
 	total := 0
 	for _, s := range allShapes {
 		if counts[s] != want[s] {

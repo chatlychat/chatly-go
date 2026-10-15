@@ -6,8 +6,14 @@ import (
 )
 
 // ChannelsService is the /v1/channels surface. Reach it as client.Channels.
-// Read-only: both routes need channels:read, and no key-accessible route
-// writes a channel.
+//
+// Six methods, and three of them WRITE. This comment used to read "Read-only:
+// both routes need channels:read, and no key-accessible route writes a
+// channel", which was false on both halves by the time anyone read it:
+// Create, Update and RotateSecret are all here and all key-accessible.
+//
+// Reads need channels:read, writes need channels:write, and RotateSecret
+// returns a secret exactly once — there is no route that reads it back.
 type ChannelsService struct{ c *Client }
 
 // List returns every channel in the workspace.

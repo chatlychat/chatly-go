@@ -32,6 +32,13 @@ var (
 	// means one of two things: the key lacks the scope the route requires, or
 	// the route is not key-accessible at all (it needs a signed-in person —
 	// see the package doc on which routes those are).
+	//
+	// There is a THIRD cause and exactly one route has it:
+	// Visitors.StartConversation is behind a per-workspace opt-in that is off
+	// by default, so its 403 is usually about
+	// settings.proactiveOutreach.apiKeysMayStartConversations rather than
+	// about the key at all. Read APIError.Message there before re-minting a
+	// key that was never the problem.
 	ErrForbidden = errors.New("chatly: forbidden")
 
 	// ErrNotFound is HTTP 404.

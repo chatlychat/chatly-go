@@ -36,4 +36,5 @@ func attachServices(c *Client) {
 	c.EmailTemplates = &EmailTemplatesService{c: c}
 	c.KnowledgeGaps = &KnowledgeGapsService{c: c}
 	c.Triggers = &TriggersService{c: c}
+	c.Visitors = &VisitorsService{c: c}
 }

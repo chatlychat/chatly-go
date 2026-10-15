@@ -356,9 +356,9 @@ id is `ErrEmptyIdentityInput`, not a hash of nothing.
 
 ## The escape hatch
 
-The Chatly API has 162 key-accessible routes and this package hand-writes a
+The Chatly API has 163 key-accessible routes and this package hand-writes a
 method for **every one of them** — as of 2026-10-14 the shared SDK manifest
-and the set of routes carrying `@AllowApiKey()` are the same 162, with no gap
+and the set of routes carrying `@AllowApiKey()` are the same 163, with no gap
 in either direction. `Request` is therefore for what the API adds after this
 release, and for the things a typed method cannot express. It goes through the
 same auth, idempotency, retry and error handling:
@@ -403,7 +403,7 @@ bare array, `*Page[Object]` is paginated.
 
 ## Methods
 
-162 methods across twenty-three namespaces — every key-accessible route in the
+163 methods across twenty-four namespaces — every key-accessible route in the
 API, which is every route on the shared SDK manifest (`packages/sdk-spec/surface.json`). Verb and path are the API route
 each one calls.
 
@@ -839,7 +839,18 @@ each shown **exactly once** and recoverable from nowhere.
 
 `Update` cannot touch the external configuration and `UpdateExternal` cannot
 touch anything else; because both schemas strip unknown keys, crossing them is
-a 200 that changed nothing. `RotateExternalSecret` has no overlap window.
+a 200 that changed nothing.
+
+`RotateExternalSecret(ctx, id)` is a hard cut: no request body, and the new
+secret signs every delivery from the moment it returns. Pass
+`chatly.RotateExternalSecretOptions{ActivateAt: t}` (at most 168 hours ahead,
+checked by the server) to open an overlap window instead — the old secret
+keeps signing every delivery until `t`, and the response's `activatesAt` is
+that instant. `activatesAt` is null when the new secret is already signing:
+no options, an instant already past, or an agent with no usable secret today.
+Each delivery carries one signature, so hold both secrets in your verifier for
+the window. `ActivateAt` goes up as UTC with a `Z`; `ActivateAtRaw` sends an
+ISO 8601 string you already have, verbatim.
 
 `TestDelivery` is synchronous and writes nothing — it signs a rehearsal
 payload, posts it to your real URL and returns what came back, so a non-2xx
@@ -991,9 +1002,47 @@ full replace, so send the whole object; an omitted `DebounceSeconds` is
 written as null. `EventType` is unvalidated, so a typo is accepted, stored and
 never fires.
 
+### `client.Visitors`
+
+| Method              | Route                                              |
+| ------------------- | -------------------------------------------------- |
+| `StartConversation` | `POST /v1/visitors/{contactId}/start-conversation` |
+
+One method, and the namespace is one method on purpose. `GET /v1/visitors/live`
+and `GET /v1/visitors/{contactId}/pages` sit on the same controller and carry
+no `@AllowApiKey()`, so a `ck_` key gets a 403 from both — they are not on the
+manifest and have no method here.
+
+`StartConversation` opens a thread with a contact who did **not** write first
+and answers `{conversationId}`. It takes no body: the contact id is the whole
+input.
+
+Two things to know before you call it. **It is off by default, per
+workspace** — `settings.proactiveOutreach.apiKeysMayStartConversations`, which
+an owner or admin turns on with `PATCH /v1/workspace/settings` (session-only,
+so not from this SDK) and you can read with `client.Workspace.Settings`. So an
+`ErrForbidden` here is usually about that setting rather than about your
+scopes; `conversations:write` was already grantable and is already held by
+keys minted for ticket bulk actions and schedule-send, which is exactly why
+the scope alone was not made the gate. And **three per contact per hour**,
+counted per contact rather than per caller, surfacing as `ErrRateLimited`.
+
+That 429 is worth a line of its own, because it is not the shape most clients
+assume. The per-contact limit sends **no `Retry-After` header**, so
+`APIError.RetryAfter` is **zero** — the TTL is in the body instead, at
+`error.details.retryAfterSeconds`, which you reach through `APIError.Body`.
+The global throttler buckets this route also inherits (30/second,
+100/15 minutes) do send the header and do populate `RetryAfter`. So a zero
+`RetryAfter` on a 429 from this route does not mean "retry now".
+
+An offline visitor is not notified at all: the greeting is persisted and the
+widget renders it from history on their next page view. Nothing is emailed,
+pushed or queued. If you need to reach someone who has left the site, open an
+email or SMS conversation instead.
+
 ## What is deliberately missing
 
-Nothing key-accessible is missing: all 162 such routes have a typed method as
+Nothing key-accessible is missing: all 163 such routes have a typed method as
 of 2026-10-14. Reach anything added later with `Request`. Beyond that, most of
 the API — reactions, blocking a contact, anything that records _who_ did
 something — requires a signed-in person and answers an API key with 403. Those have no method here on purpose: a method

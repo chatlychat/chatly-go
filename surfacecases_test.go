@@ -151,6 +151,18 @@ func coreSurfaceCases() []surfaceCase {
 			return c.Conversations.CancelScheduled(ctx, "sm_1")
 		}},
 
+		// visitors
+		//
+		// `{conversationId}` — an object, and read off the SERVICE's declared
+		// return type rather than a @ZodResponse, because the handler carries
+		// none: VisitorsService.startProactiveConversation is
+		// Promise<{ conversationId: string }>. Nothing about the verb or the
+		// URL says object; conversations.send is the sibling that also
+		// answers a single created thing.
+		{"visitors.start_conversation", "POST", "/v1/visitors/ct_1/start-conversation", shapeObject, func(ctx context.Context, c *Client) (any, error) {
+			return c.Visitors.StartConversation(ctx, "ct_1")
+		}},
+
 		// tickets
 		{"tickets.list", "GET", "/v1/tickets", shapePage, func(ctx context.Context, c *Client) (any, error) {
 			return c.Tickets.List(ctx, nil)

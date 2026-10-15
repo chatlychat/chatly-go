@@ -1,8 +1,8 @@
 {
-  "$auditedAgainst": "162 of the key-accessible routes in apps/api, each verified against its handler. Do NOT read a total out of this line: `node scripts/report-api-key-surface.mjs --json` is the live count and printed {open: 174, total: 909} on 2026-10-14. This field said \"148 routes carry @AllowApiKey()\" beside 159 entries \u2014 a leading number smaller than the list it introduced \u2014 because the count was frozen in prose on 2026-10-12 and routes were opened after it. The three routes added on 2026-10-14 were each found by more than one SDK author reading handlers, and each verified again before being listed: `webhooks.delete` (webhooks.module.ts:511, @AllowApiKey + integrations:write, answers `{ok: true}`), `root.me` (auth.controller.ts:252, whose docblock calls it the liveness check every SDK wants) and `workspace.mine` (workspaces.controller.ts:167, `z.array(workspaceListItemSchema)`). Adding a route here puts every SDK into `debt` in check-sdk-surface-parity until it implements it \u2014 that is the mechanism working, not a failure.",
+  "$auditedAgainst": "163 of the key-accessible routes in apps/api, each verified against its handler. Do NOT read a total out of this line, and do NOT compare it with report-api-key-surface.mjs, which counts something else: that script reports @AllowApiKey() DECORATORS (175 across 911 route decorators on 2026-10-14), and a class-level decorator opens many handlers while counting once, so its number is always the larger and the two are not in the same units. Its own first line says so. The authoritative ROUTE count is keyAccessible in docs/api-counts.json, generated from the deployed spec — 162 there, 163 in a local build, because POST /v1/visitors/{contactId}/start-conversation opened on 2026-10-14 and has not been deployed yet. A 162-vs-174 gap was written down as an open discrepancy for a day on the strength of that false comparison. This field said \"148 routes carry @AllowApiKey()\" beside 159 entries — a leading number smaller than the list it introduced — because the count was frozen in prose on 2026-10-12 and routes were opened after it. The three routes added on 2026-10-14 were each found by more than one SDK author reading handlers, and each verified again before being listed: `webhooks.delete` (webhooks.module.ts:511, @AllowApiKey + integrations:write, answers `{ok: true}`), `root.me` (auth.controller.ts:252, whose docblock calls it the liveness check every SDK wants) and `workspace.mine` (workspaces.controller.ts:167, `z.array(workspaceListItemSchema)`). A FOURTH opened later the same day and was verified the same way before being listed: `visitors.start_conversation` (visitors.controller.ts:123, @AllowApiKey + @RequirePermission('conversations:write'), under the controller's class-level @RequireIdempotencyKey(), no @Body() and no @Query(), answering `{ conversationId }`). Note the deployed-spec count stays 162 until it ships, which is the discrepancy named above and not a new one. Adding a route here puts every SDK into `debt` in check-sdk-surface-parity until it implements it — that is the mechanism working, not a failure.",
   "$comment": "SINGLE SOURCE OF TRUTH for every Chatly backend SDK. scripts/check-sdk-surface-parity.mjs reads this file and fails if any SDK is missing an entry. Adding a method means adding it HERE first, then in every SDK. Every path below is key-accessible: it carries @AllowApiKey() in apps/api. A route that does not is not SDK surface, because a `ck_` key gets 403 from it.",
   "$pagedMeans": "The route answers `{ items, nextCursor }` and every SDK offers an auto-paginating form of it. 13 now. This read 8 for a day and was wrong in both directions: `macros.list` was flagged and is `@PaginationExempt` (a bare array, 200 rows by usage rank), while `contacts.journey`, `conversations.unattended` and `search.query` return real cursors and were not flagged. The author of the Java SDK found the three omissions by reading the handlers rather than trusting this file.",
-  "$shapeMeans": "The TOP-LEVEL shape of a 200/201 body, derived from the handler's `@ZodResponse` schema (or, where it has none, the service return type it forwards). One of four: `array` \u2014 a bare JSON array, 33 routes (one of them, `channels.adapters`, is an array of STRINGS rather than objects, which is why a decoder built only for `[]Object` fails on exactly one row); `page` \u2014 the cursor envelope, `items` plus `nextCursor`, with whatever sits beside them \u2014 `hasMore` on the SEVEN built by `buildPaginatedResponse` (`tickets.list`, `kb.articles`, `events.list`, `webhooks.deliveries`, and the three added later: `bots.list`, `bots.deliveries`, `triggers.list`), `total` on `conversations.unattended`, `tier` and `facets` on `search.query`, and nothing at all on the rest, built by the local `pageOf` helpers \u2014 13 routes; `object` \u2014 a JSON object that is not a page, 115 routes; `empty` \u2014 no body at all, a real 204, exactly 1 route (`macros.delete`); seven other DELETEs answer 200 WITH a body and are `object`. NOTE: `billing.invoices` is genuinely cursor-paginated and is deliberately `object` with `paged: false`, because its envelope key is `data`, not `items` \u2014 an SDK that offers a walker keyed on `items` for it reports an empty page forever. Four SDK authors derived this whole column independently from the handlers on 2026-10-14 and agreed with every row; the numbers above had said 14 / 10 / 30 / 1 since the manifest covered 55 routes. The three routes added on 2026-10-14 brought array to 33 and object to 115; `webhooks.delete` makes seven DELETEs that answer 200 with a body, and it is the only one of them that also 404s on a miss (its service returns the deleted row and checks for absence) \u2014 `ai.delete_tool` and `bot_routes.delete` report success for an id that never existed.",
+  "$shapeMeans": "The TOP-LEVEL shape of a 200/201 body, derived from the handler's `@ZodResponse` schema (or, where it has none, the service return type it forwards). One of four: `array` — a bare JSON array, 33 routes (one of them, `channels.adapters`, is an array of STRINGS rather than objects, which is why a decoder built only for `[]Object` fails on exactly one row); `page` — the cursor envelope, `items` plus `nextCursor`, with whatever sits beside them — `hasMore` on the SEVEN built by `buildPaginatedResponse` (`tickets.list`, `kb.articles`, `events.list`, `webhooks.deliveries`, and the three added later: `bots.list`, `bots.deliveries`, `triggers.list`), `total` on `conversations.unattended`, `tier` and `facets` on `search.query`, and nothing at all on the rest, built by the local `pageOf` helpers — 13 routes; `object` — a JSON object that is not a page, 116 routes; `empty` — no body at all, a real 204, exactly 1 route (`macros.delete`); seven other DELETEs answer 200 WITH a body and are `object`. NOTE: `billing.invoices` is genuinely cursor-paginated and is deliberately `object` with `paged: false`, because its envelope key is `data`, not `items` — an SDK that offers a walker keyed on `items` for it reports an empty page forever. Four SDK authors derived this whole column independently from the handlers on 2026-10-14 and agreed with every row; the numbers above had said 14 / 10 / 30 / 1 since the manifest covered 55 routes. The three routes added on 2026-10-14 brought array to 33 and object to 115, and the fourth, `visitors.start_conversation`, brought object to 116 — read off `VisitorsService.startProactiveConversation`’s declared `Promise<{ conversationId: string }>`, because that handler carries no `@ZodResponse` at all; `webhooks.delete` makes seven DELETEs that answer 200 with a body, and it is the only one of them that also 404s on a miss (its service returns the deleted row and checks for absence) — `ai.delete_tool` and `bot_routes.delete` report success for an id that never existed.",
   "version": 1,
   "baseUrl": "https://api.chatlychat.com",
   "auth": {
@@ -123,7 +123,7 @@
       "http": "GET",
       "path": "/v1/billing/usage",
       "shape": "object",
-      "$requires": "eventType \u2014 the handler validates it against a closed list and throws before doing anything else, so a call with no query is a 400. Four SDKs shipped it as an optional argument."
+      "$requires": "eventType — the handler validates it against a closed list and throws before doing anything else, so a call with no query is a 400. Four SDKs shipped it as an optional argument."
     },
     {
       "ns": "billing",
@@ -173,7 +173,7 @@
       "http": "POST",
       "path": "/v1/bot-routes/resolve",
       "shape": "object",
-      "$note": "A DRY RUN, and a read dressed as a POST: it writes nothing and takes a hypothetical visitor in the body. Answers { selected, routes, event } \u2014 every enabled route with its verdict in evaluation order, plus the event object the conditions were evaluated against. `explainRoutes` is the production decision: `pickRoute`, which the worker calls on every message, is a wrapper that discards the explanation."
+      "$note": "A DRY RUN, and a read dressed as a POST: it writes nothing and takes a hypothetical visitor in the body. Answers { selected, routes, event } — every enabled route with its verdict in evaluation order, plus the event object the conditions were evaluated against. `explainRoutes` is the production decision: `pickRoute`, which the worker calls on every message, is a wrapper that discards the explanation."
     },
     {
       "ns": "bot_routes",
@@ -188,7 +188,7 @@
       "http": "GET",
       "path": "/v1/bots/{id}/analytics",
       "shape": "object",
-      "$note": "One bot's numbers for BOTH kinds of bot, from one route: latency p50/p95/max, failure rate, fallback count, resolution and handoff rate. The window is `?days` (1-365, default 30) and nothing else \u2014 `from`, `to`, `weeks` and `date` are REFUSED with a 400 rather than stripped. Latency is percentiles, never a mean. Every rate is null, not 0, when its sampleSize is 0. `botType` discriminates: `volume.retrying`, `reliability.fallbackCount` and `reliability.retriedCount` are null for a Chatly persona (it has no retry ladder and no fallback message) and `volume.cancelled` is null for an external agent. A null there means the kind cannot produce the number, never zero."
+      "$note": "One bot's numbers for BOTH kinds of bot, from one route: latency p50/p95/max, failure rate, fallback count, resolution and handoff rate. The window is `?days` (1-365, default 30) and nothing else — `from`, `to`, `weeks` and `date` are REFUSED with a 400 rather than stripped. Latency is percentiles, never a mean. Every rate is null, not 0, when its sampleSize is 0. `botType` discriminates: `volume.retrying`, `reliability.fallbackCount` and `reliability.retriedCount` are null for a Chatly persona (it has no retry ladder and no fallback message) and `volume.cancelled` is null for an external agent. A null there means the kind cannot produce the number, never zero."
     },
     {
       "ns": "bots",
@@ -204,7 +204,7 @@
       "path": "/v1/bots/{id}/deliveries",
       "shape": "page",
       "paged": true,
-      "$note": "The external-agent delivery ledger: status, attempts, your HTTP status, latency, the first 300 chars of your error body. `?status=` takes pending|delivered|failed|dead. The signed payload is NOT in a list row \u2014 read one delivery for it."
+      "$note": "The external-agent delivery ledger: status, attempts, your HTTP status, latency, the first 300 chars of your error body. `?status=` takes pending|delivered|failed|dead. The signed payload is NOT in a list row — read one delivery for it."
     },
     {
       "ns": "bots",
@@ -212,7 +212,7 @@
       "http": "GET",
       "path": "/v1/bots/{id}/deliveries/{deliveryId}",
       "shape": "object",
-      "$note": "Adds `payload`: the exact object that was serialised and signed. Typed as unknown in every SDK \u2014 a row written before a payload key existed carries the shape of that day."
+      "$note": "Adds `payload`: the exact object that was serialised and signed. Typed as unknown in every SDK — a row written before a payload key existed carries the shape of that day."
     },
     {
       "ns": "bots",
@@ -242,7 +242,8 @@
       "name": "rotate_external_secret",
       "http": "POST",
       "path": "/v1/bots/{id}/external/rotate-secret",
-      "shape": "object"
+      "shape": "object",
+      "$note": "Verified against bots.controller.ts on 2026-10-15 (commit d509799a): @AllowApiKey(), @RequirePermission('ai:configure'), and the class-level @RequireIdempotencyKey() with no handler opt-out, so the key is REQUIRED. BODY, optional: `rotateSecretSchema` is `{ activateAt?: ISO 8601 instant with Z or an offset }`, `.strict().default({})`. No body and `{}` are both the hard cut this route always performed, so the no-argument form of every SDK keeps sending exactly what it sent before — none for Node, Go, Ruby and Rust, `{}` for Python, .NET, PHP and Java (each measured by its suite on 2026-10-15, not read off the transport), both correct. `.strict()` is the point: before this the route had NO @Body() and a posted `activateAt` was a 201 that silently cut over; now an unknown key, `activate_at` included, is a 400 naming it. `activateAt` more than 168 hours ahead (EXTERNAL_AGENT_ROTATION_MAX_DEFER_HOURS) is a 400 from the SERVICE, measured on the server's clock — no SDK re-implements that bound, because a client clock is not the one that decides. An instant not in the future, or an agent with no usable secret today, is NOT an error: it is a hard cut, reported as `activatesAt: null`. RESPONSE, 201, still `object`: `{ signingSecret, activatesAt }` (`rotatedSigningSecretSchema`). `activatesAt` is null when the new secret is already signing; otherwise it is the instant of the switch, and until then the OLD secret signs every delivery. Each delivery carries ONE signature — two were considered and rejected because the shared verifier and the Node SDK read one v1 per header — so the overlap lives in the integrator's verifier, which should hold both secrets for the window. The value of a parked secret is never readable again; `GET /v1/bots/{id}` reports only `externalAgent.signingSecretRotatesAt`."
     },
     {
       "ns": "bots",
@@ -250,7 +251,7 @@
       "http": "POST",
       "path": "/v1/bots/{id}/test-delivery",
       "shape": "object",
-      "$note": "Signs a rehearsal payload (`test: true`, all-zero UUIDs) with the real secret, POSTs it to the real url, returns the response synchronously plus the signature and the signed payload. Writes nothing \u2014 no ledger row, so it does not appear under bots.deliveries."
+      "$note": "Signs a rehearsal payload (`test: true`, all-zero UUIDs) with the real secret, POSTs it to the real url, returns the response synchronously plus the signature and the signed payload. Writes nothing — no ledger row, so it does not appear under bots.deliveries."
     },
     {
       "ns": "bots",
@@ -300,7 +301,7 @@
       "http": "GET",
       "path": "/v1/canvas-steps/{id}",
       "shape": "object",
-      "$note": "The back half of an ASYNC canvas step. Your endpoint answered { pending: true } because a payment needed 3-D Secure or a fraud check; this reads the step you were given a correlation id for. The caller is a backend process minutes later with a `ck_` key and no visitor session \u2014 precisely the caller a 10-second synchronous timeout could not serve."
+      "$note": "The back half of an ASYNC canvas step. Your endpoint answered { pending: true } because a payment needed 3-D Secure or a fraud check; this reads the step you were given a correlation id for. The caller is a backend process minutes later with a `ck_` key and no visitor session — precisely the caller a 10-second synchronous timeout could not serve."
     },
     {
       "ns": "canvas_steps",
@@ -308,7 +309,7 @@
       "http": "POST",
       "path": "/v1/canvas-steps/{id}/resolve",
       "shape": "object",
-      "$note": "Post the real next step. Body is { canvas }, strict. SINGLE-USE by construction: the claiming UPDATE carries status='pending' in its WHERE, so exactly one resolve wins and a second is told the step is already resolved \u2014 which is why the route is @OptionalIdempotency() rather than requiring a key for a guarantee it makes without one."
+      "$note": "Post the real next step. Body is { canvas }, strict. SINGLE-USE by construction: the claiming UPDATE carries status='pending' in its WHERE, so exactly one resolve wins and a second is told the step is already resolved — which is why the route is @OptionalIdempotency() rather than requiring a key for a guarantee it makes without one."
     },
     {
       "ns": "channels",
@@ -389,7 +390,7 @@
       "path": "/v1/contacts/{id}/journey",
       "shape": "page",
       "paged": true,
-      "$note": "The cursor is an ISO-8601 instant, not an opaque string \u2014 `journeyQuerySchema` declares `cursor: z.string().datetime({ offset: true })`. It is still a cursor: walk it, never construct it."
+      "$note": "The cursor is an ISO-8601 instant, not an opaque string — `journeyQuerySchema` declares `cursor: z.string().datetime({ offset: true })`. It is still a cursor: walk it, never construct it."
     },
     {
       "ns": "contacts",
@@ -506,7 +507,7 @@
       "http": "GET",
       "path": "/v1/conversations/{id}/outcomes",
       "shape": "object",
-      "$note": "An object CARRYING `items` with no cursor \u2014 `@PaginationExempt`, because one conversation has one resolution, one or two escalations and a purchase or none. Merged from three tables (`ai_resolutions`, `conversation_escalations`, the `conversation.purchased` cdp events), newest first, each arm capped at 20. Every row carries `source`, which is what tells your own `agent_report` apart from the visitor's `visitor_chip` chip click."
+      "$note": "An object CARRYING `items` with no cursor — `@PaginationExempt`, because one conversation has one resolution, one or two escalations and a purchase or none. Merged from three tables (`ai_resolutions`, `conversation_escalations`, the `conversation.purchased` cdp events), newest first, each arm capped at 20. Every row carries `source`, which is what tells your own `agent_report` apart from the visitor's `visitor_chip` chip click."
     },
     {
       "ns": "conversations",
@@ -515,7 +516,7 @@
       "path": "/v1/conversations/{id}/outcomes",
       "shape": "object",
       "write": true,
-      "$note": "Three words, and each goes to the table a report already reads: `resolved` \u2192 `ai_resolutions` with `source = 'agent_report'` (migration 0609), counted as AI-resolved by the deflection funnel; `escalated` \u2192 `EscalationsService`, which REALLY hands the thread over (status pending, ownership released, your reason posted as an internal note) and is the same effect as the bot surface's `handoff`; `purchased` \u2192 a `conversation.purchased` cdp event that can complete a conversion goal. `outcomeRef` is REQUIRED on `purchased` (your order id, unique per workspace forever, enforced by a unique index) and `valueCents`/`currency` are REFUSED on the other two. **Chatly has no revenue report: the amount is stored and summed nowhere.** `created: false` means an equal outcome was already on record."
+      "$note": "Three words, and each goes to the table a report already reads: `resolved` → `ai_resolutions` with `source = 'agent_report'` (migration 0609), counted as AI-resolved by the deflection funnel; `escalated` → `EscalationsService`, which REALLY hands the thread over (status pending, ownership released, your reason posted as an internal note) and is the same effect as the bot surface's `handoff`; `purchased` → a `conversation.purchased` cdp event that can complete a conversion goal. `outcomeRef` is REQUIRED on `purchased` (your order id, unique per workspace forever, enforced by a unique index) and `valueCents`/`currency` are REFUSED on the other two. **Chatly has no revenue report: the amount is stored and summed nowhere.** `created: false` means an equal outcome was already on record."
     },
     {
       "ns": "conversations",
@@ -523,7 +524,7 @@
       "http": "POST",
       "path": "/v1/conversations/{id}/return-to-bot",
       "shape": "object",
-      "$note": "The reverse of an escalation, and it did not exist before 2026-10-13: handoff was one-directional, so once a person touched a thread the assistant was out of it for good. Body is { botId } \u2014 REQUIRED, not defaulted to the previous owner, because a thread three assistants have touched has no obvious 'the' bot. Refuses a pending/snoozed/closed/merged conversation and a non-active bot; already-owned is a 200-shaped success, not an error. Publishes conversation.returned_to_bot (webhook schema version 2026-10-13)."
+      "$note": "The reverse of an escalation, and it did not exist before 2026-10-13: handoff was one-directional, so once a person touched a thread the assistant was out of it for good. Body is { botId } — REQUIRED, not defaulted to the previous owner, because a thread three assistants have touched has no obvious 'the' bot. Refuses a pending/snoozed/closed/merged conversation and a non-active bot; already-owned is a 200-shaped success, not an error. Publishes conversation.returned_to_bot (webhook schema version 2026-10-13)."
     },
     {
       "ns": "conversations",
@@ -584,7 +585,7 @@
       "http": "POST",
       "path": "/v1/customer-card-endpoints/{id}/activate-secret",
       "shape": "object",
-      "$note": "Promotes the secret `rotate_secret` minted. From this call it is the only one that signs, and the previous one is gone. A 409 when nothing is pending \u2014 which is a truthful answer to a caller that has lost track of a rotation, not an error to swallow."
+      "$note": "Promotes the secret `rotate_secret` minted. From this call it is the only one that signs, and the previous one is gone. A 409 when nothing is pending — which is a truthful answer to a caller that has lost track of a rotation, not an error to swallow."
     },
     {
       "ns": "customer_card_endpoints",
@@ -600,7 +601,7 @@
       "http": "DELETE",
       "path": "/v1/customer-card-endpoints/{id}",
       "shape": "object",
-      "$note": "200 with `{ ok: true }`. Signing for that url reverts to the leading card's own secret and `x-chatly-card-id` comes back \u2014 a change at the receiver, not a cleanup."
+      "$note": "200 with `{ ok: true }`. Signing for that url reverts to the leading card's own secret and `x-chatly-card-id` comes back — a change at the receiver, not a cleanup."
     },
     {
       "ns": "customer_card_endpoints",
@@ -608,7 +609,7 @@
       "http": "GET",
       "path": "/v1/customer-card-endpoints",
       "shape": "array",
-      "$note": "A BARE ARRAY, like `customer_cards.list` \u2014 not `{ items }`, no cursor. `cardKeys` is the cards pointing at each url, and empty means that secret signs nothing. No secret, no prefix, no hash: a pending rotation shows as `pendingSecretSet: true`."
+      "$note": "A BARE ARRAY, like `customer_cards.list` — not `{ items }`, no cursor. `cardKeys` is the cards pointing at each url, and empty means that secret signs nothing. No secret, no prefix, no hash: a pending rotation shows as `pendingSecretSet: true`."
     },
     {
       "ns": "customer_card_endpoints",
@@ -818,7 +819,7 @@
       "path": "/v1/macros/{id}",
       "shape": "empty",
       "write": true,
-      "$note": "The ONLY 204 on this surface \u2014 `@HttpCode(204)`, and the handler awaits and returns nothing. An SDK must not try to parse a body here."
+      "$note": "The ONLY 204 on this surface — `@HttpCode(204)`, and the handler awaits and returns nothing. An SDK must not try to parse a body here."
     },
     {
       "ns": "macros",
@@ -833,7 +834,7 @@
       "http": "GET",
       "path": "/v1/macros",
       "shape": "array",
-      "$note": "NOT paged: the handler carries @PaginationExempt and returns a bare array capped at 200, ordered by usage rank. This said `paged: true` for a day, and the .NET and Rust clients both raised a decode error on it while their surface-lock suites stayed green \u2014 their fake transports answer every route with a page envelope."
+      "$note": "NOT paged: the handler carries @PaginationExempt and returns a bare array capped at 200, ordered by usage rank. This said `paged: true` for a day, and the .NET and Rust clients both raised a decode error on it while their surface-lock suites stayed green — their fake transports answer every route with a page envelope."
     },
     {
       "ns": "macros",
@@ -885,7 +886,7 @@
       "http": "GET",
       "path": "/v1/reports/conversations-by-day",
       "shape": "array",
-      "$note": "A bare ARRAY of `{ day, count }` buckets \u2014 the service returns the grouped rows as they come back, with no envelope."
+      "$note": "A bare ARRAY of `{ day, count }` buckets — the service returns the grouped rows as they come back, with no envelope."
     },
     {
       "ns": "reports",
@@ -1083,6 +1084,15 @@
       "path": "/v1/triggers",
       "shape": "page",
       "paged": true
+    },
+    {
+      "ns": "visitors",
+      "name": "start_conversation",
+      "http": "POST",
+      "path": "/v1/visitors/{contactId}/start-conversation",
+      "shape": "object",
+      "paged": false,
+      "$note": "`paged: false` is written out here rather than left absent — absence is how the other 149 non-page rows spell it and means the same thing; every consumer reads this field as `=== true`. Opens a thread with a contact who did NOT write first. Verified against visitors.controller.ts:123 on 2026-10-14: @Post(':contactId/start-conversation'), @AllowApiKey(), @RequirePermission('conversations:write'), and @RequireIdempotencyKey() at CLASS level with no handler opt-out — so the key is REQUIRED, not merely honoured (contrast channels.rotate_secret, which is @NoIdempotency). No @Body() and no @Query() on the handler: the contactId path parameter is the whole input, so no caller-supplied field may reach the wire. What goes up where a body would be is a per-SDK transport decision and the eight differ — Node, Go, Ruby and Rust send no body; Python and .NET serialise `{}` for every bodyless write, deliberately and transport-wide. Both are correct here because nothing reads a body on this route, and every suite asserts the stronger thing: that none of the method's arguments is serialised into one. Answers `{ conversationId }` — VisitorsService.startProactiveConversation is declared `Promise<{ conversationId: string }>` (visitors.service.ts:409) and the handler carries no @ZodResponse, so the shape is read off that return type: object, not page. TWO refusals an integrator meets before any scope problem, and neither changes the shape. (1) A 403 from a workspace OPT-IN that is off by default — `settings.proactiveOutreach.apiKeysMayStartConversations`, flipped with `PATCH /v1/workspace/settings` (session-only) and readable with the key-accessible `GET /v1/workspace/settings`. `conversations:write` was already grantable and already held by keys minted for ticket bulk actions and schedule-send, so the scope is NOT the opt-in; a 403 here usually means the setting, not the key. (2) A 429 from a limit of 3 per CONTACT per hour (KEY_OUTREACH_PER_CONTACT_LIMIT), counted in Redis per workspace+contact rather than per caller, because @Throttle can only count callers and the abuse shape is N threads at one person. That 429 carries NO Retry-After header — measured, not assumed: the guard throws RateLimitedError, whose AppError puts the TTL in `error.details.retryAfterSeconds`, app-exception.filter.ts sets no headers at all, and the only thing that synthesises a plain Retry-After (apps/api/src/main.ts:402-416) derives it from the `Retry-After-{bucket}` headers @nestjs/throttler emits, which this refusal does not produce. So the route answers TWO different 429s: this one, where the wait is in the BODY, and one from the inherited global buckets (`short` 30/s, `login` 100/15m), which does carry the header. Whether an SDK's retry-after field is populated on the FIRST kind is a property of that SDK, not of the route, and the eight split: Ruby (errors.rb) and Python (errors.py) fall back to `details.retryAfterSeconds` and report the wait; Node, Go, PHP, Java, .NET and Rust read the header only and report null/0. Each half is driven against the real envelope in its own suite. The author of this line first wrote \"no SDK reads it\" for all eight and two SDK authors disproved it by running the envelope through their error path instead of reading the sentence. Do NOT write a test that fakes a Retry-After header on the per-contact limit; it would agree with a bug rather than with the server, and three SDKs shipped exactly that fixture for an hour. Also: an offline visitor is NOT notified — the greeting is persisted and rendered from history on their next page view, with no email, push or provider message."
     },
     {
       "ns": "webhooks",

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 // BotsService is the /v1/bots surface — AI personas, BYO external agents, and
@@ -228,23 +229,83 @@ func (s *BotsService) UpdateExternal(ctx context.Context, botID string, in BotIn
 	return s.c.writeObject(ctx, "PATCH", "/v1/bots/"+pathEscape(botID)+"/external", nil, in)
 }
 
+// RotateExternalSecretOptions schedules a rotation instead of cutting over
+// at once. Pass at most one to RotateExternalSecret; leaving it out is the
+// hard cut.
+type RotateExternalSecretOptions struct {
+	// ActivateAt is the instant the NEW secret starts signing deliveries.
+	// Until then the OLD secret keeps signing every delivery, so this is the
+	// window in which to deploy the new one to your verifier. The zero time
+	// means absent. Sent as RFC3339 (with fractional seconds when present)
+	// converted to UTC with a "Z", whatever zone the caller's value is in.
+	//
+	// At most 168 hours ahead, a 400 otherwise — measured against the
+	// SERVER's clock, so this SDK does not check it. An instant that has
+	// already passed is not an error: it is a hard cut, answered with
+	// activatesAt null.
+	ActivateAt time.Time
+
+	// ActivateAtRaw is ActivateAt as a string, sent VERBATIM for a caller
+	// that already holds an ISO 8601 instant (with "Z" or an offset). The
+	// server validates it. Setting both this and ActivateAt is an error,
+	// raised before any request.
+	ActivateAtRaw string
+}
+
+// rotateExternalSecretBody is the wire body when an activation instant is
+// given. The key is spelled `activateAt` here, not left to a field-name
+// convention: the route's schema is strict, so `activate_at` is a 400.
+type rotateExternalSecretBody struct {
+	ActivateAt string `json:"activateAt"`
+}
+
 // RotateExternalSecret mints a new signing secret for an external agent.
 //
 // POST /v1/bots/{id}/external/rotate-secret — scope ai:configure, answers 201
-// with `{ signingSecret }`. That field name, not `secret` and not `token`. No
-// request body.
+// with `{ signingSecret, activatesAt }`. That field name, not `secret` and not
+// `token`.
 //
-// THERE IS NO OVERLAP WINDOW. The old secret stops verifying the instant this
-// returns, so deploy the new one to your endpoint first, or deliveries fail
-// in between. And since a replayed Idempotency-Key returns the cached
-// response, a pinned key hands back the previous secret instead of rotating —
-// use a fresh key per rotation.
-func (s *BotsService) RotateExternalSecret(ctx context.Context, botID string) (Object, error) {
+// WITHOUT options it is a hard cut and sends no request body, exactly as it
+// always has: the new secret signs every delivery from the moment this
+// returns and the old one signs nothing, so deploy the new one to your
+// endpoint first, or deliveries fail verification in between. activatesAt is
+// null in that case.
+//
+// WITH RotateExternalSecretOptions.ActivateAt (or ActivateAtRaw) it opens an
+// overlap window: the body is `{"activateAt": "..."}`, the old secret keeps
+// signing every delivery until that instant and the new one signs from it.
+// activatesAt in the response is the instant the switch happens; null means
+// the new secret is ALREADY signing — the instant had passed, or the agent
+// had no usable secret to keep signing with. Each delivery carries ONE
+// signature, so during the window your verifier should hold both secrets and
+// accept a delivery that verifies against either.
+//
+// Since a replayed Idempotency-Key returns the cached response, a pinned key
+// hands back the previous secret instead of rotating — use a fresh key per
+// rotation.
+func (s *BotsService) RotateExternalSecret(ctx context.Context, botID string, opts ...RotateExternalSecretOptions) (Object, error) {
 	if botID == "" {
 		return nil, errors.New("chatly: Bots.RotateExternalSecret: empty bot id")
 	}
+	if len(opts) > 1 {
+		return nil, errors.New("chatly: Bots.RotateExternalSecret: pass at most one RotateExternalSecretOptions")
+	}
+	// A nil interface, not a typed nil: the transport sends no body only for
+	// a body that is == nil.
+	var body any
+	if len(opts) == 1 {
+		o := opts[0]
+		switch {
+		case !o.ActivateAt.IsZero() && o.ActivateAtRaw != "":
+			return nil, errors.New("chatly: Bots.RotateExternalSecret: set ActivateAt or ActivateAtRaw, not both")
+		case !o.ActivateAt.IsZero():
+			body = rotateExternalSecretBody{ActivateAt: o.ActivateAt.UTC().Format(time.RFC3339Nano)}
+		case o.ActivateAtRaw != "":
+			body = rotateExternalSecretBody{ActivateAt: o.ActivateAtRaw}
+		}
+	}
 	path := "/v1/bots/" + pathEscape(botID) + "/external/rotate-secret"
-	return s.c.writeObject(ctx, "POST", path, nil, nil)
+	return s.c.writeObject(ctx, "POST", path, nil, body)
 }
 
 // BotAnalyticsOptions is the ONE parameter the analytics route accepts.

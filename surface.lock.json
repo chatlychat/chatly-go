@@ -1018,6 +1018,13 @@
       "shape": "page"
     },
     {
+      "ns": "visitors",
+      "name": "start_conversation",
+      "http": "POST",
+      "path": "/v1/visitors/{contactId}/start-conversation",
+      "shape": "object"
+    },
+    {
       "ns": "webhooks",
       "name": "create",
       "http": "POST",

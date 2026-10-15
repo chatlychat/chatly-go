@@ -13,13 +13,21 @@ server-side code. It is not the browser SDK (`@chatlychat/sdk-js`) and must
 never be shipped to a browser: the key is a bearer credential for the whole
 workspace.
 
-Only key-accessible routes are surface. 140 of the API's 886 routes carry
-`@AllowApiKey()`; the rest answer a `ck_` key with 403 because they need a
-signed-in person — a reaction records _who_ reacted, and a key is not a
-person. Shipping a method that always fails is worse than not shipping it:
-the failure arrives at runtime, in production, in someone else's
-integration. `surface.json` is the subset we hand-wrote methods for; every
-other key-accessible route is reachable through the escape hatch below.
+Only key-accessible routes are surface. 162 of the deployed API's 916
+operations carry `@AllowApiKey()` — the authoritative figure is
+`keyAccessible` in `docs/api-counts.json`, generated from the deployed
+OpenAPI document, and it is 163 in a local build because
+`visitors.start_conversation` opened on 2026-10-14 and has not shipped yet.
+Do NOT take that number from `report-api-key-surface.mjs`, which counts
+DECORATORS rather than routes and so always reads higher; `$auditedAgainst`
+in `surface.json` has the whole trap written out.
+
+The rest answer a `ck_` key with 403 because they need a signed-in person — a
+reaction records _who_ reacted, and a key is not a person. Shipping a method
+that always fails is worse than not shipping it: the failure arrives at
+runtime, in production, in someone else's integration. `surface.json` covers
+every key-accessible route today; a route that opens server-side before the
+clients catch up is reachable through the escape hatch below until they do.
 
 ## 1. Construction
 
@@ -118,19 +126,28 @@ route is exactly one of them:
 
 | `shape`  | What comes back                                 | Count |
 | -------- | ----------------------------------------------- | ----: |
-| `array`  | a bare JSON array                               |    14 |
-| `page`   | the cursor envelope — `items` plus `nextCursor` |    10 |
-| `object` | a JSON object that is not a page                |    30 |
+| `array`  | a bare JSON array                               |    33 |
+| `page`   | the cursor envelope — `items` plus `nextCursor` |    13 |
+| `object` | a JSON object that is not a page                |   116 |
 | `empty`  | no body at all, a real 204                      |     1 |
 
-A `page` may carry fields beside the two that define it, and five do.
-`hasMore` on the four that go through `buildPaginatedResponse` —
-`tickets.list`, `kb.articles`, `events.list`, `webhooks.deliveries`. `total`
-on `conversations.unattended` (the badge number, which ignores the cursor).
-`tier` plus `facets` on `search.query`. The remaining five are built by the
+These four numbers are `$shapeMeans` in `surface.json`, and that is the copy
+to trust. This table sat at 14 / 10 / 30 / 1 — the 55-route era — while the
+manifest grew past 160, which is what `$shapeMeans` means when it says the
+numbers had not moved since the manifest covered 55 routes. If this table
+disagrees with what `check-sdk-surface-parity.mjs` prints, the script is
+right and this is stale.
+
+A `page` may carry fields beside the two that define it, and nine do.
+`hasMore` on the seven that go through `buildPaginatedResponse` —
+`tickets.list`, `kb.articles`, `events.list`, `webhooks.deliveries`,
+`bots.list`, `bots.deliveries` and `triggers.list`. `total` on
+`conversations.unattended` (the badge number, which ignores the cursor).
+`tier` plus `facets` on `search.query`. The remaining four are built by the
 `pageOf` helpers local to the contacts and conversations modules and carry
-nothing else at all — so `hasMore` is on four of ten, not on most of them,
-and a client that reads it as a required field is wrong about six routes. A
+nothing else at all — so `hasMore` is on seven of thirteen, still not on all
+of them, and a client that reads it as a required field is wrong about six
+routes. A
 decoder must tolerate the extras rather
 than reject the body; `search.query`'s single-page form in particular must
 return the WHOLE envelope, because a client that yields only hits throws the
@@ -148,7 +165,7 @@ routes read like one thing and answer another:
 And two of the four `reports.*` routes are bare arrays (`reports.agents`,
 `reports.conversations_by_day`) while the other two are objects.
 
-The ten `page` routes are exactly the ten carrying `paged: true`.
+The thirteen `page` routes are exactly the thirteen carrying `paged: true`.
 `scripts/check-sdk-surface-parity.mjs` asserts that correspondence in both
 directions, so the two fields cannot drift apart: `shape` says what comes
 back, `paged` says the SDK also offers a walker over it.
@@ -211,9 +228,15 @@ browser, only the digest. Reject an empty secret or an empty id.
 ## 8. The escape hatch
 
 A public `request(method, path, query?, body?)` that returns the decoded JSON
-and goes through the same auth, idempotency, retry and error handling. 85 of
-the 140 key-accessible routes have no typed method; without this, reaching
-one means abandoning the SDK and hand-rolling HTTP with a bearer token.
+and goes through the same auth, idempotency, retry and error handling.
+
+This said "85 of the 140 key-accessible routes have no typed method", and as
+of 2026-10-14 that figure is **zero**: all eight SDKs cover the whole
+manifest and the manifest covers every key-accessible route. The hatch is not
+redundant for that. A route opens server-side before eight clients catch up —
+`visitors.start_conversation` was in exactly that state for part of a day —
+and without the hatch, reaching it means abandoning the SDK and hand-rolling
+HTTP with a bearer token.
 
 ## 9. Shape of the code
 
@@ -262,10 +285,11 @@ list) and by each SDK's own suite (the behaviour). At minimum:
      and rejects the same delivery with the digest taken over the body alone.
 10. The surface lock covers **response shapes**, in both directions. The
     suite declares, by hand and not from the manifest, the shape it expects
-    from each of the 55 routes (§5a); feeds each method a body of THAT shape;
+    from each of the manifest's routes (§5a); feeds each method a body of
+    THAT shape;
     asserts the value handed back really has it — which is what catches a
     method that wraps or unwraps; asserts the distribution is still
-    14 `array` / 10 `page` / 30 `object` / 1 `empty`, so a column of 55
+    33 `array` / 13 `page` / 116 `object` / 1 `empty`, so a column of 163
     `object`s cannot pass; and feeds every auto-paginator a bare array where
     it expects a page and requires it to **fail loudly**. The last one is the
     only part that proves the declaration matters: a decoder that ignores the
