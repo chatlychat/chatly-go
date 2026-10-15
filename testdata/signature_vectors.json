@@ -1,0 +1,1162 @@
+{
+  "version": 1,
+  "vectors": [
+    {
+      "name": "unified_v2 verifies t.METHOD.path.body",
+      "input": {
+        "surface": "unified_v2",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "unified_v2",
+        "base": "target",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "agent_delivery verifies t.body",
+      "input": {
+        "surface": "agent_delivery",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "agent_delivery",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "event_webhook verifies t.body on x-livechat-signature",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "event_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "ai_tool_call verifies t.METHOD.path.body on x-chatly-signature",
+      "input": {
+        "surface": "ai_tool_call",
+        "body": "",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=c44ee8addde7bed00977a7250a24913142f53f0ecb4fcab6cdf2ce485dc51b66"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "get",
+        "path": "/orders/4471?expand=lines",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "ai_tool_call",
+        "base": "target",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "canvas_step verifies ms.body with the timestamp in MILLISECONDS",
+      "input": {
+        "surface": "canvas_step",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-canvas-ts": "1760000000789",
+          "x-chatly-canvas-signature": "sha256=29656d7159b8131a53299d697b8f37962b031f1985625d8266cca7ec860399f4"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "canvas_step",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000789
+      }
+    },
+    {
+      "name": "customer_card verifies ms.body with the timestamp in MILLISECONDS",
+      "input": {
+        "surface": "customer_card",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-timestamp": "1760000000789",
+          "x-chatly-signature": "sha256=29656d7159b8131a53299d697b8f37962b031f1985625d8266cca7ec860399f4"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "customer_card",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000789
+      }
+    },
+    {
+      "name": "workflow_webhook verifies the body base with no marker",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "workflow_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "workflow_webhook_legacy verifies the body alone on explicit opt-in, with no timestamp",
+      "input": {
+        "surface": "workflow_webhook_legacy",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "sha256=db374dcc8b868ad7b65fca335f557a2e5b88dbb0ea26047fa7dc6d63fb203d7c"
+        },
+        "secret": "whsec_vector_secret",
+        "allowUnprotectedReplay": true,
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "workflow_webhook_legacy",
+        "base": "body_only",
+        "secretIndex": 0,
+        "timestampMs": null
+      }
+    },
+    {
+      "name": "the body is HMACed as UTF-8 bytes",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"text\":\"café — 你好 🙂\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=793e8245e3503cbf73f676fdcec538ccac9885a77755ef82e3df2ef7d3557260"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "event_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "header names are matched case-insensitively",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "X-LiveChat-Signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "event_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "an upper-case hex digest verifies",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68C8081FADFDDD5BDED0385D719BD284E690EC14847D59A15A30816BF65C4F1E"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "event_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "spaces and unknown fields in the value are tolerated",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": " t=1760000000 , v9=ignored , v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e "
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "event_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "the method is case-normalised into the base string",
+      "input": {
+        "surface": "unified_v2",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "post",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "unified_v2",
+        "base": "target",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "the FIRST t wins, so an appended t cannot move the window",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e,t=1759900000"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "event_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "a secret array reports which secret verified",
+      "input": {
+        "surface": "agent_delivery",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=323a0bc4ba65c66c6a133123f32fe52c9e0c176227d9511b6d9b1c1a6a8de221"
+        },
+        "secret": [
+          "whsec_vector_secret",
+          "whsec_vector_old"
+        ],
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "agent_delivery",
+        "base": "body",
+        "secretIndex": 1,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "an empty string in a secret array is skipped, and secretIndex still indexes the array given",
+      "input": {
+        "surface": "agent_delivery",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": [
+          "",
+          "whsec_vector_secret"
+        ],
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "agent_delivery",
+        "base": "body",
+        "secretIndex": 1,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "a header carrying two v1 digests verifies when either matches",
+      "input": {
+        "surface": "agent_delivery",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=323a0bc4ba65c66c6a133123f32fe52c9e0c176227d9511b6d9b1c1a6a8de221,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "agent_delivery",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "prefer: v2 present with method/path is what verifies, reported as unified_v2",
+      "input": {
+        "surface": "customer_card",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-timestamp": "1760000000789",
+          "x-chatly-signature": "sha256=29656d7159b8131a53299d697b8f37962b031f1985625d8266cca7ec860399f4",
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "unified_v2",
+        "base": "target",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "prefer: v2 present WITHOUT method/path falls through to the legacy header",
+      "input": {
+        "surface": "canvas_step",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-canvas-ts": "1760000000789",
+          "x-chatly-canvas-signature": "sha256=29656d7159b8131a53299d697b8f37962b031f1985625d8266cca7ec860399f4",
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "canvas_step",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000789
+      }
+    },
+    {
+      "name": "prefer never cross-falls-back: a bad v2 beside a good legacy header is refused",
+      "input": {
+        "surface": "agent_delivery",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e",
+          "x-chatly-signature-v2": "t=1760000000,v1=2a4bdc2b6b26ffb21d13b686b6d86c6743bb5b2f40cda6e0b9fbe0b587206525,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "unified_v2",
+        "reason": "signature_mismatch"
+      }
+    },
+    {
+      "name": "ignore: the legacy header verifies even beside a bad v2",
+      "input": {
+        "surface": "agent_delivery",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e",
+          "x-chatly-signature-v2": "t=1760000000,v1=2a4bdc2b6b26ffb21d13b686b6d86c6743bb5b2f40cda6e0b9fbe0b587206525,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "v2": "ignore",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "agent_delivery",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "require: no v2 header is missing_signature_header",
+      "input": {
+        "surface": "agent_delivery",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "v2": "require",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "agent_delivery",
+        "reason": "missing_signature_header"
+      }
+    },
+    {
+      "name": "require: v2 present without method/path is missing_request_target",
+      "input": {
+        "surface": "agent_delivery",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "v2": "require",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "agent_delivery",
+        "reason": "missing_request_target"
+      }
+    },
+    {
+      "name": "unified_v2 with no method/path is missing_request_target",
+      "input": {
+        "surface": "unified_v2",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "unified_v2",
+        "reason": "missing_request_target"
+      }
+    },
+    {
+      "name": "unified_v2 signed for another path is a mismatch",
+      "input": {
+        "surface": "unified_v2",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "unified_v2",
+        "reason": "signature_mismatch"
+      }
+    },
+    {
+      "name": "marker: unified_v2 refuses b=b",
+      "input": {
+        "surface": "unified_v2",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e,b=b"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "unified_v2",
+        "reason": "signature_mismatch"
+      }
+    },
+    {
+      "name": "marker: unified_v2 still verifies an ABSENT marker over the target base",
+      "input": {
+        "surface": "unified_v2",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "unified_v2",
+        "base": "target",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "marker: a forged b=t cannot make a body digest verify on unified_v2",
+      "input": {
+        "surface": "unified_v2",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "unified_v2",
+        "reason": "signature_mismatch"
+      }
+    },
+    {
+      "name": "marker: workflow_webhook b=t with no method/path is missing_request_target",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "workflow_webhook",
+        "reason": "missing_request_target"
+      }
+    },
+    {
+      "name": "marker: workflow_webhook b=t with method/path verifies the target base",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "workflow_webhook",
+        "base": "target",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "marker: workflow_webhook b=t NARROWS — a body digest marked b=t is refused",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "workflow_webhook",
+        "reason": "signature_mismatch"
+      }
+    },
+    {
+      "name": "marker: workflow_webhook b=b verifies the body base even when given method/path",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e,b=b"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "workflow_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "marker: workflow_webhook b=b NARROWS — a target digest marked b=b is refused",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=b"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "workflow_webhook",
+        "reason": "signature_mismatch"
+      }
+    },
+    {
+      "name": "marker: workflow_webhook b=b under require is refused",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e,b=b"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "v2": "require",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "workflow_webhook",
+        "reason": "signature_mismatch"
+      }
+    },
+    {
+      "name": "marker: workflow_webhook absent marker + method/path accepts the target base",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "workflow_webhook",
+        "base": "target",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "marker: workflow_webhook ignore reads only the body base, whatever the marker",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "v2": "ignore",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "workflow_webhook",
+        "reason": "signature_mismatch"
+      }
+    },
+    {
+      "name": "marker: the FIRST b wins",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d,b=t,b=b"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "workflow_webhook",
+        "reason": "missing_request_target"
+      }
+    },
+    {
+      "name": "marker: an unknown marker is treated as absent",
+      "input": {
+        "surface": "workflow_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature-v2": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e,b=z"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "workflow_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "a seconds surface 301s stale is outside tolerance",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000301000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "timestamp_outside_tolerance"
+      }
+    },
+    {
+      "name": "exactly 300s stale is inside tolerance",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000300000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "event_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "a far-future timestamp is refused too",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1759999699000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "timestamp_outside_tolerance"
+      }
+    },
+    {
+      "name": "toleranceSeconds widens the window",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "toleranceSeconds": 3600,
+        "nowMs": 1760003000000
+      },
+      "expect": {
+        "ok": true,
+        "surface": "event_webhook",
+        "base": "body",
+        "secretIndex": 0,
+        "timestampMs": 1760000000000
+      }
+    },
+    {
+      "name": "a SECONDS value on a milliseconds surface is the unit trap, refused on time",
+      "input": {
+        "surface": "customer_card",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-timestamp": "1760000000",
+          "x-chatly-signature": "sha256=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "customer_card",
+        "reason": "timestamp_outside_tolerance"
+      }
+    },
+    {
+      "name": "a non-digit timestamp is malformed",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=17e8,v1=fdee4d5f57b891b5bd6c2181601bef93dd2b740a93d6b1937b208d50c7a5c507"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "malformed_timestamp"
+      }
+    },
+    {
+      "name": "a timestamp too large for an integer is malformed",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=99999999999999999999,v1=60a34c66db29fff04d945e971d8d085f59cb120edb7962230f38534baf928612"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "malformed_timestamp"
+      }
+    },
+    {
+      "name": "a missing separate timestamp header is missing_timestamp",
+      "input": {
+        "surface": "canvas_step",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-canvas-signature": "sha256=29656d7159b8131a53299d697b8f37962b031f1985625d8266cca7ec860399f4"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "canvas_step",
+        "reason": "missing_timestamp"
+      }
+    },
+    {
+      "name": "an unknown surface",
+      "input": {
+        "surface": "not_a_surface",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {},
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "not_a_surface",
+        "reason": "unknown_surface"
+      }
+    },
+    {
+      "name": "an empty secret",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "missing_secret"
+      }
+    },
+    {
+      "name": "an array of only empty secrets",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": [
+          "",
+          ""
+        ],
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "missing_secret"
+      }
+    },
+    {
+      "name": "no signature header",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "missing_signature_header"
+      }
+    },
+    {
+      "name": "a signature header that arrived twice is refused, not trial-verified",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": [
+            "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e",
+            "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+          ]
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "duplicate_signature_header"
+      }
+    },
+    {
+      "name": "the same header under two casings counts as twice",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e",
+          "X-Livechat-Signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "duplicate_signature_header"
+      }
+    },
+    {
+      "name": "a t=/v1= value with no v1 is malformed",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "malformed_signature_header"
+      }
+    },
+    {
+      "name": "a non-hex digest is malformed, not a mismatch",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "malformed_signature_header"
+      }
+    },
+    {
+      "name": "a short digest is malformed, not a mismatch",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=abcd"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "malformed_signature_header"
+      }
+    },
+    {
+      "name": "a t=/v1= value on a sha256= surface is malformed",
+      "input": {
+        "surface": "customer_card",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-timestamp": "1760000000789",
+          "x-chatly-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "customer_card",
+        "reason": "malformed_signature_header"
+      }
+    },
+    {
+      "name": "the legacy workflow header is refused without the opt-in",
+      "input": {
+        "surface": "workflow_webhook_legacy",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "sha256=db374dcc8b868ad7b65fca335f557a2e5b88dbb0ea26047fa7dc6d63fb203d7c"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "workflow_webhook_legacy",
+        "reason": "replay_unprotected"
+      }
+    },
+    {
+      "name": "an agent delivery does not verify as a tool call",
+      "input": {
+        "surface": "ai_tool_call",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "method": "POST",
+        "path": "/hooks/chatly?tenant=acme",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "ai_tool_call",
+        "reason": "signature_mismatch"
+      }
+    },
+    {
+      "name": "a tool call with no method/path is missing_request_target",
+      "input": {
+        "surface": "ai_tool_call",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-chatly-signature": "t=1760000000,v1=666eb5b283d58737b989ca99a0652aba73754024def8bc1c857d5d179d4b640d"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "ai_tool_call",
+        "reason": "missing_request_target"
+      }
+    },
+    {
+      "name": "the wrong secret is a mismatch",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\":\"evt_1\",\"type\":\"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=323a0bc4ba65c66c6a133123f32fe52c9e0c176227d9511b6d9b1c1a6a8de221"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "signature_mismatch"
+      }
+    },
+    {
+      "name": "a re-serialised body is a mismatch",
+      "input": {
+        "surface": "event_webhook",
+        "body": "{\"id\": \"evt_1\", \"type\": \"message.created\"}",
+        "headers": {
+          "x-livechat-signature": "t=1760000000,v1=68c8081fadfddd5bded0385d719bd284e690ec14847d59a15a30816bf65c4f1e"
+        },
+        "secret": "whsec_vector_secret",
+        "nowMs": 1760000000000
+      },
+      "expect": {
+        "ok": false,
+        "surface": "event_webhook",
+        "reason": "signature_mismatch"
+      }
+    }
+  ]
+}

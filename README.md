@@ -333,6 +333,77 @@ The delivery log is readable too: `client.Webhooks.Deliveries` for the list,
 `client.Webhooks.Delivery` for one including the payload and target URL, and
 `client.Webhooks.Redeliver` to queue a failed one again.
 
+## Verifying any Chatly signature: `VerifyChatlySignature`
+
+`VerifyWebhook` answers one question — is this event webhook genuine, yes or
+no. Chatly signs **eight** kinds of outbound request, and they do not all sign
+the same string: three send `x-chatly-signature` and sign three different
+things, and two send their timestamp in MILLISECONDS. `VerifyChatlySignature`
+covers all eight, and when it refuses it says why.
+
+```go
+res := chatly.VerifyChatlySignature(chatly.VerifyChatlySignatureInput{
+	Surface: chatly.SurfaceEventWebhook,
+	Body:    raw,      // the exact bytes, before json.Unmarshal
+	Headers: r.Header, // any map[string][]string; lookup is case-insensitive
+	Secrets: []string{secret},
+	Method:  r.Method,
+	Path:    r.URL.RequestURI(), // pathname + query, never scheme or host
+})
+if !res.OK {
+	log.Printf("chatly signature refused: %s: %s", res.Reason, res.Message)
+	http.Error(w, "bad signature", http.StatusUnauthorized)
+	return
+}
+```
+
+| `Surface`                      | header                                      | signed string                   | timestamp |
+| ------------------------------ | ------------------------------------------- | ------------------------------- | --------- |
+| `SurfaceUnifiedV2`             | `x-chatly-signature-v2`                     | `<t>.<METHOD>.<path>.<rawBody>` | seconds   |
+| `SurfaceAgentDelivery`         | `x-chatly-signature`                        | `<t>.<rawBody>`                 | seconds   |
+| `SurfaceEventWebhook`          | `x-livechat-signature`                      | `<t>.<rawBody>`                 | seconds   |
+| `SurfaceAIToolCall`            | `x-chatly-signature`                        | `<t>.<METHOD>.<path>.<rawBody>` | seconds   |
+| `SurfaceCanvasStep`            | `x-chatly-canvas-signature` + `-ts`         | `<ts>.<rawBody>`                | **ms**    |
+| `SurfaceCustomerCard`          | `x-chatly-signature` + `x-chatly-timestamp` | `<ts>.<rawBody>`                | **ms**    |
+| `SurfaceWorkflowWebhook`       | `x-chatly-signature-v2`                     | `<t>.<rawBody>` (or the target) | seconds   |
+| `SurfaceWorkflowWebhookLegacy` | `x-chatly-signature`                        | `<rawBody>` — no timestamp      | none      |
+
+What the inputs mean:
+
+- **`Secrets`** is a slice so a receiver mid-rotation can accept the old and
+  the new secret; a single secret is `[]string{secret}`. `res.SecretIndex`
+  says which one verified, indexed into the slice you passed (empty entries
+  are skipped but keep their slot) — that is how you learn the old one is
+  finally unused.
+- **`V2`** — the unified `x-chatly-signature-v2` header is being sent beside
+  every legacy header. The default (`""` / `chatly.V2Prefer`) verifies it
+  whenever it is present and you passed `Method` and `Path`, and verifies the
+  legacy header otherwise, so you pick up the stronger check with no code
+  change. A bad v2 digest is a refusal; it never falls back to the legacy
+  header. `chatly.V2Require` refuses without it; `chatly.V2Ignore` reads only
+  the legacy header. On success, `res.Surface` reports what actually verified
+  — `unified_v2` when v2 was preferred.
+- **`Tolerance`** — zero means 300s (`chatly.ChatlySignatureToleranceSeconds`),
+  in both directions, and exactly 300s away is still accepted.
+  `chatly.ChatlySignatureToleranceUnlimited` skips the check (archives only).
+- **`Now`** — the zero `time.Time` means the real clock. For tests, pass
+  `time.UnixMilli(...)`.
+- **`AllowUnprotectedReplay`** — `SurfaceWorkflowWebhookLegacy` signs no
+  timestamp, so a captured request verifies forever. It is refused with
+  `replay_unprotected` unless you set this; prefer `SurfaceWorkflowWebhook`,
+  which the same call also sends.
+
+`res.Reason` is one of eleven stable strings (`chatly.ReasonSignatureMismatch`,
+`chatly.ReasonTimestampOutsideTolerance`, …), identical across every Chatly
+SDK, and `res.Message` is a sentence you can log. A signature header that
+arrives twice — including once as `x-a` and once as `X-A` in a hand-built map
+— is refused as `duplicate_signature_header`, not trial-verified. A timestamp
+too large for a 64-bit millisecond count is `malformed_timestamp`. It never
+panics.
+
+The behaviour is pinned by a cross-SDK corpus,
+`testdata/signature_vectors.json`, which every Chatly SDK runs unmodified.
+
 ## Identity hash (for the browser widget)
 
 When a workspace turns identity verification on, the widget must prove that

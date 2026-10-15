@@ -7,6 +7,22 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `VerifyChatlySignature(VerifyChatlySignatureInput) VerifyChatlySignatureResult`
+  (`signatures.go`, table in `signature_table.go`): one verifier for all eight
+  signed outbound surfaces, the unified `x-chatly-signature-v2` header with a
+  `V2Prefer` / `V2Require` / `V2Ignore` policy, multiple secrets with
+  `SecretIndex`, multiple `v1` digests, and a stable `Reason` plus a printable
+  `Message` on every refusal instead of a bare `false`. Exported:
+  `ChatlySignatureSurface` and its eight `Surface*` constants,
+  `ChatlySignatureSurfaces`, `ChatlySignatureFailure` and its eleven `Reason*`
+  constants, `ChatlySignatureBase`, `ChatlySignatureToleranceSeconds` (300),
+  `ChatlySignatureToleranceUnlimited`, `ChatlyV2SignatureHeader`. Port of
+  sdk-node's `verifyChatlySignature`, held to the same 59-vector cross-SDK
+  corpus (`testdata/signature_vectors.json`). Two Go-specific decisions, both
+  documented on the field: `Now` is a `time.Time` whose zero value means the
+  clock (so the epoch stays usable), and a timestamp that overflows a 64-bit
+  millisecond count is `malformed_timestamp`. `VerifyWebhookSignature` is
+  unchanged.
 - `Bots.RotateExternalSecret` takes an optional
   `RotateExternalSecretOptions{ActivateAt time.Time}` (or `ActivateAtRaw`
   string) and sends `{"activateAt": "..."}`: the old signing secret keeps
