@@ -17,8 +17,15 @@ import (
 const signatureCorpusPath = "testdata/signature_vectors.json"
 
 // signatureCorpusFloor: a loader that silently reads zero vectors passes
-// every per-vector assertion. 59 is the corpus size when this was written.
-const signatureCorpusFloor = 59
+// every per-vector assertion.
+//
+// It is the corpus's CURRENT size, and keeping it there is the whole point.
+// It sat at 59 — the size when this port was written — while the corpus held
+// 61, so for two vectors a loader that dropped them passed. A floor below
+// the real count is a gate that has already gone part-way blind; raise this
+// whenever the corpus grows, which sdk-node's spec makes impossible to do
+// silently because every copy must stay byte-identical.
+const signatureCorpusFloor = 61
 
 type corpusVector struct {
 	Name  string `json:"name"`
