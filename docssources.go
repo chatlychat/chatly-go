@@ -26,6 +26,11 @@ const (
 	DocsProviderDiscourse  = "discourse"
 	DocsProviderReadMe     = "readme"
 	DocsProviderWebsite    = "website"
+	DocsProviderNotion     = "notion"
+	DocsProviderConfluence = "confluence"
+	DocsProviderZendesk    = "zendesk"
+	DocsProviderIntercom   = "intercom"
+	DocsProviderGitHub     = "github"
 )
 
 // Providers returns the static provider registry.
