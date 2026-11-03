@@ -53,7 +53,9 @@ func (s *DocsSourcesService) Providers(ctx context.Context) ([]Object, error) {
 // query parameters.
 //
 // READ `syncStatus`, NOT `articleCount`. It is derived rather than stored and
-// is one of queued, synced, synced_empty, synced_partial, failed or paused —
+// is one of queued, synced, synced_empty, synced_partial, failed, paused or
+// waiting (a website crawl created with activateWhen="content", whose URL is
+// not serving anything crawlable yet; it retries on its own back-off) —
 // and `articleCount: 0` on a fresh source means "has not run yet", which is
 // exactly what made scripts poll forever or report the connect as failed.
 //
